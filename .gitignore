@@ -1,0 +1,49 @@
+# Python environments and generated files
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Local credentials and runtime data
+.env
+.env.*
+!.env.example
+.session_secret
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+data/*
+!data/.gitkeep
+/local_history.json
+*.log
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Decompiled references and unrelated build output
+moviebox-apkdecompile/
+moviebox_decoded-apktool/
+moviebox-apktool/
+app-jadx/
+app-jadx-gui/
+*.apk
+*.apk.jadx
+*.jadx
+.gradle/
+node_modules/
+out/

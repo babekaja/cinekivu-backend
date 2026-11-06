@@ -1,0 +1,2 @@
+# Optionnel : client HTTP chrome-like utilisé par le moteur d'origine CineKivu.
+curl_cffi>=0.7,<1
