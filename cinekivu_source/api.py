@@ -279,7 +279,7 @@ class MovieBoxEngine:
             if self.bearer_token and not force and self.token_expires_at > time.time() + 60:
                 return self.bearer_token
             try:
-                reply = self.api_request("POST", "/wefeed-mobile-bff/user-api/visitor-login", body_dict={}, use_token=False, retry_auth=False)
+                reply = self.api_request("POST", "/wefeed-mobile-bff/user-api/visitor-login", body_dict={}, use_token=False, retry_auth=False, timeout_budget=6)
                 data = reply.get("data", reply)
                 token = data.get("token") if isinstance(data, dict) else None
                 if isinstance(token, str) and token:

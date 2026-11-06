@@ -319,7 +319,19 @@ class MovieBoxClient:
 
             # Gracefully handle non-JSON responses (e.g. "ok")
             try:
-                return response.json()
+                res_json = response.json()
+                if isinstance(res_json, dict) and res_json.get("code") in (401, 441) and not kwargs.get("_retry_auth"):
+                    try:
+                        from cinekivu_source.api import MovieBoxEngine
+                        new_token = MovieBoxEngine.get_instance().bootstrap_token(force=True)
+                        if new_token:
+                            self.auth.update_session(new_token)
+                            retry_kw = dict(kwargs)
+                            retry_kw["_retry_auth"] = True
+                            return self.request(method, endpoint, params=params, data=data, **retry_kw)
+                    except Exception:
+                        pass
+                return res_json
             except json.JSONDecodeError:
                 text = response.text
                 logger.error(f"Failed to decode JSON from {endpoint}. Status: {response.status_code}. Text: {text[:500]}")

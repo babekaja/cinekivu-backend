@@ -16,7 +16,13 @@ class MovieBoxAuth:
 
     def login_guest(self):
         """Perform guest login (Reset back to anonymous state)."""
-        self.token = DEFAULT_GUEST_TOKEN
+        token = ""
+        try:
+            from cinekivu_source.api import MovieBoxEngine
+            token = MovieBoxEngine.get_instance().bootstrap_token()
+        except Exception:
+            token = DEFAULT_GUEST_TOKEN
+        self.token = token or DEFAULT_GUEST_TOKEN
         self.user_id = ""
         self.is_logged_in = bool(self.token)
         self.is_guest_mode = True
@@ -41,6 +47,15 @@ class MovieBoxAuth:
 
     def get_auth_headers(self) -> dict:
         """Returns the current auth headers based on state (Guest vs Authenticated)."""
+        if not self.token:
+            try:
+                from cinekivu_source.api import MovieBoxEngine
+                token = MovieBoxEngine.get_instance().bootstrap_token()
+                if token:
+                    self.token = token
+                    self.is_logged_in = True
+            except Exception:
+                pass
         headers = {}
         if self.is_logged_in and self.token:
             headers["Authorization"] = f"Bearer {self.token}"

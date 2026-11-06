@@ -312,10 +312,18 @@ def live_filter_options(category: str) -> dict:
 def live_title(subject_id: str) -> dict | None:
     try:
         return normalize_title(cine.engine.get_details(valid_id(subject_id)))
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(502, 'Fiche actuelle indisponible') from exc
+    except Exception:
+        pass
+    try:
+        recs = upstream('GET', '/subject/detail-rec', params={'subjectId': valid_id(subject_id)})
+        items = (recs.get('data', {}) or {}).get('items', []) if isinstance(recs, dict) else []
+        for entry in items:
+            norm = normalize_title(entry)
+            if norm and str(norm.get('subjectId')) == str(subject_id):
+                return norm
+    except Exception:
+        pass
+    return None
 
 
 def native_ranking(ranking_id: str, page: int = 1) -> dict:

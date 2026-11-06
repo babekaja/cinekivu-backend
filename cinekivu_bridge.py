@@ -327,7 +327,15 @@ def install_cinekivu_routes(app):
                     'runtime': raw.get('duration'), 'dubs': raw.get('dubs') or [],
                     'raw_dubs': raw.get('dubs') or [], 'source': 'cinekivu',
                     'audio_verified': False}}
-        except Exception as exc: raise _remote_error(exc) from exc
+        except Exception as exc:
+            try:
+                from cinekivu_web import live_title
+                fallback_item = live_title(subject_id)
+                if fallback_item:
+                    return {'code': 0, 'data': {**fallback_item, 'source': 'cinekivu-fallback'}}
+            except Exception:
+                pass
+            raise _remote_error(exc) from exc
 
     @router.get('/titles/{subject_id}/editions')
     def editions(subject_id: str):
