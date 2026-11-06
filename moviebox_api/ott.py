@@ -83,8 +83,9 @@ def _remote(raw: Any) -> Any:
         raise HTTPException(502, detail="Invalid upstream response")
     code = raw.get("code", 0)
     if code not in (0, 200, "0", "200", None):
-        # Client errors frequently return code=500 with msg, do not silently present empty catalogue.
-        raise HTTPException(502, detail="Catalogue provider unavailable")
+        # Provide the upstream error message when available instead of a generic label.
+        msg = raw.get("msg") or raw.get("message") or "Catalogue provider unavailable"
+        raise HTTPException(502, detail=f"Catalogue provider unavailable ({msg})")
     return raw
 
 
@@ -293,7 +294,18 @@ def install_ott_routes(app: FastAPI, get_session: Callable, mapper: Callable,
     @router.get("/titles/{subject_id}")
     def title(subject_id: str, session_id: Optional[str] = Cookie(None)):
         s = session(session_id)
-        raw = _remote(s["content"].get_movie_detail(_id(subject_id)))
+        raw = s["content"].get_movie_detail(_id(subject_id))
+        # Auto-recover from 441 (miss token) by bootstrapping a fresh token.
+        if isinstance(raw, dict) and raw.get("code") in (401, 441):
+            try:
+                from cinekivu_source.api import MovieBoxEngine
+                token = MovieBoxEngine.get_instance().bootstrap_token(force=True)
+                if token:
+                    s["auth"].update_session(token)
+                    raw = s["content"].get_movie_detail(_id(subject_id))
+            except Exception:
+                pass
+        raw = _remote(raw)
         data = raw.get("data") or {}
         if not isinstance(data, dict) or not data:
             raise HTTPException(404, detail="Title not found in the provider response")

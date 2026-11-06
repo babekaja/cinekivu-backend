@@ -155,6 +155,15 @@ def get_session(session_id: Optional[str] = None):
     # Create new session
     sid = session_id or str(uuid.uuid4())
     auth = MovieBoxAuth()
+    # Bootstrap a visitor token from MovieBoxEngine so all OTT requests
+    # carry a valid bearer token from the start.
+    try:
+        from cinekivu_source.api import MovieBoxEngine
+        token = MovieBoxEngine.get_instance().bootstrap_token()
+        if token:
+            auth.update_session(token)
+    except Exception as exc:
+        logger.warning('Auto-bootstrap token unavailable: %s', type(exc).__name__)
     client = MovieBoxClient(auth=auth)
     sessions[sid] = {
         "id": sid,
