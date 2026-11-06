@@ -478,8 +478,19 @@ def install_web_routes(app, get_session):
         if not item:
             try:
                 item = normalize_title(cine.engine.get_details(valid_id(subject_id)))
-            except Exception as exc:
-                raise HTTPException(502, 'Fiche actuelle indisponible') from exc
+            except Exception:
+                pass
+        if not item:
+            try:
+                recs = upstream('GET', '/subject/detail-rec', params={'subjectId': valid_id(subject_id)})
+                items = (recs.get('data', {}) or {}).get('items', []) if isinstance(recs, dict) else []
+                for entry in items:
+                    norm = normalize_title(entry)
+                    if norm and str(norm.get('subjectId')) == str(subject_id):
+                        item = norm
+                        break
+            except Exception:
+                pass
         if not item:
             raise HTTPException(404, 'Titre introuvable')
         return {'code':0,'data':{**item, 'stale':False,

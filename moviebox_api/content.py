@@ -44,7 +44,7 @@ class MovieBoxContent:
         """Fetches details for a specific movie or show."""
         return self.client.request(
             "GET",
-            "/subject-api/get",
+            "/wefeed-mobile-bff/subject-api/get",
             params={"subjectId": subject_id}
         )
 
@@ -52,7 +52,7 @@ class MovieBoxContent:
         """Fetches episodes for a series (via season-info)."""
         return self.client.request(
             "GET",
-            "/subject-api/season-info",
+            "/wefeed-mobile-bff/subject-api/season-info",
             params={"subjectId": series_id}
         )
 
@@ -60,7 +60,7 @@ class MovieBoxContent:
         """Fetches similar recommendations (related)."""
         return self.client.request(
             "GET",
-            "/subject-api/related",
+            "/wefeed-mobile-bff/subject-api/related",
             params={"subjectId": subject_id}
         )
 

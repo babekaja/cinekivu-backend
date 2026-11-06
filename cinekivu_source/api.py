@@ -80,9 +80,9 @@ SECRET_KEY_ALT_B64 = "WHFuMm5uTzQxL0w5Mm8xaXVYaFNMSFRiWHZZNFo1Wlo2Mm04bVNMQQ=="
 MODERN_USER_AGENT = "com.community.oneroom/50020121 (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)"
 WEB_USER_AGENT = "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"
 API_BASE = "https://h5-api.aoneroom.com/wefeed-h5api-bff"
-NATIVE_API_HOSTS = ("https://api6.aoneroom.com", "https://api5.aoneroom.com", "https://api4.aoneroom.com",
-                    "https://api4sg.aoneroom.com", "https://api3.aoneroom.com", "https://api6sg.aoneroom.com",
-                    "https://api.inmoviebox.com")
+NATIVE_API_HOSTS = ("https://apig.inmoviebox.com", "https://api.inmoviebox.com", "https://api6.aoneroom.com",
+                    "https://api5.aoneroom.com", "https://api4.aoneroom.com", "https://api4sg.aoneroom.com",
+                    "https://api3.aoneroom.com", "https://api6sg.aoneroom.com")
 NATIVE_API_BASE = NATIVE_API_HOSTS[0]
 NATIVE_STREAM_REFERER = "https://sportslive.wine"
 BOOTSTRAP_HOST = "https://apig.inmoviebox.com"
@@ -285,19 +285,20 @@ class MovieBoxEngine:
                 if isinstance(token, str) and token:
                     self._store_token(token)
                     return token
-            except HTTPException as exc:
-                if exc.detail in ("API returned HTTP 403", "API returned HTTP 429"):
-                    raise
-            headers = build_auth_headers("GET", BOOTSTRAP_URL, device_id=self.device_id)
-            resp = self.session.get(BOOTSTRAP_URL, headers=headers, timeout=8)
-            try:
-                token = json.loads(resp.headers.get("x-user") or "{}").get("token")
-            except (TypeError, ValueError):
-                token = None
-            if not isinstance(token, str) or not token:
-                raise HTTPException(status_code=502, detail="Impossible d’obtenir une session visiteur MovieBox.")
-            self._store_token(token)
-            return token
+            except Exception:
+                pass
+            for b_host in (BOOTSTRAP_HOST, "https://api.inmoviebox.com", "https://api6.aoneroom.com"):
+                try:
+                    b_url = f"{b_host}/wefeed-mobile-bff/tab/ranking-list?tabId=0&categoryType=4516404531735022304&page=1&perPage=1"
+                    headers = build_auth_headers("GET", b_url, device_id=self.device_id)
+                    resp = self.session.get(b_url, headers=headers, timeout=8)
+                    token = json.loads(resp.headers.get("x-user") or "{}").get("token")
+                    if isinstance(token, str) and token:
+                        self._store_token(token)
+                        return token
+                except Exception:
+                    continue
+            raise HTTPException(status_code=502, detail="Impossible d’obtenir une session visiteur MovieBox.")
 
     def api_request(self, method: str, path_or_url: str, body_dict: Optional[Dict[str, Any]] = None,
                     use_token: bool = True, retry_auth: bool = True, timeout_budget: float = 18) -> Dict[str, Any]:
@@ -325,7 +326,7 @@ class MovieBoxEngine:
             if resp.status_code in (401, 441) and use_token and retry_auth:
                 self.bootstrap_token(force=True)
                 return self.api_request(method, path_or_url, body_dict, use_token, False, timeout_budget)
-            if resp.status_code in (500, 502, 503, 504):
+            if resp.status_code in (403, 406, 407, 429, 500, 502, 503, 504):
                 continue
             if resp.status_code != 200:
                 raise HTTPException(status_code=502, detail=f"API returned HTTP {resp.status_code}")

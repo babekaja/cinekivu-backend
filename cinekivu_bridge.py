@@ -401,20 +401,27 @@ def install_cinekivu_routes(app):
     @router.get('/titles/{subject_id}/streams')
     def streams(subject_id: str, season: int = Query(1, ge=1, le=999),
                 episode: int = Query(1, ge=1, le=9999),
-                quality: str = Query('auto', pattern='^(auto|360p|480p|720p|1080p|2160p)$')):
+                quality: str = Query('auto', pattern='^(auto|360p|480p|720p|1080p|2160p)$'),
+                detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$'),
+                subject_type: int | None = Query(None, ge=1, le=2)):
         valid_id(subject_id)
         try:
             # CineKivu performs its own media verification before advertising a local playback URL.
             # MovieBox expects se=ep=0 for films; series keep selected episode.
             details = None
-            try:
-                details = cine.engine.get_details(subject_id)
-            except Exception:
-                pass
-            is_movie = str((details or {}).get('subject_type')) == '1'
+            # The catalogue already knows these values. A failed optional mobile
+            # detail lookup must not turn a known film into season 1/episode 1.
+            if not (detail_path and subject_type is not None):
+                try:
+                    details = cine.engine.get_details(subject_id)
+                except Exception:
+                    pass
+            kind = (details or {}).get('subject_type') or (details or {}).get('subjectType') or subject_type
+            is_movie = str(kind) == '1'
             upstream = cine.engine.get_streams(
                 subject_id, season=0 if is_movie else season, episode=0 if is_movie else episode,
-                detail_path=(details or {}).get('detail_path'), prefer_web_mp4=True)
+                detail_path=(details or {}).get('detail_path') or (details or {}).get('detailPath') or detail_path,
+                prefer_web_mp4=True)
             entries = delivery.prepare_streams(upstream)
             playable = []
             for item in entries:

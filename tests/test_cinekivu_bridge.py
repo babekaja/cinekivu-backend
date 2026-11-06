@@ -100,6 +100,27 @@ def test_cinekivu_streams_no_provider_cookies_or_urls(monkeypatch):
     assert called['season'] == 0 and called['episode'] == 0
 
 
+@pytest.mark.parametrize('kind,season,episode,expected', [(1, 1, 1, (0, 0)), (2, 2, 3, (2, 3))])
+def test_catalogue_playback_does_not_depend_on_another_detail_lookup(monkeypatch, kind, season, episode, expected):
+    def unavailable_details(*args):
+        raise AssertionError('Known catalogue metadata must not require a mobile detail request')
+    called = {}
+    monkeypatch.setattr(cine.engine, 'get_details', unavailable_details)
+    monkeypatch.setattr(cine.engine, 'get_streams', lambda sid, **options: called.update(options) or [])
+    monkeypatch.setattr(delivery, 'prepare_streams', lambda values: values)
+    response = client.get('/api/v1/cinekivu/titles/123/streams', params={
+        'season': season, 'episode': episode, 'detail_path': 'film-catalogue-abc', 'subject_type': kind})
+    assert response.status_code == 200
+    assert (called['season'], called['episode']) == expected
+    assert called['detail_path'] == 'film-catalogue-abc'
+
+
+@pytest.mark.parametrize('path', ['../film', 'https://other.example/film', 'film?subjectId=other'])
+def test_catalogue_detail_hint_cannot_inject_a_url_or_query(path):
+    assert client.get('/api/v1/cinekivu/titles/123/streams', params={
+        'detail_path': path, 'subject_type': 1}).status_code == 422
+
+
 def test_legacy_stream_redacts_sensitive_media_data(monkeypatch):
     monkeypatch.setattr(moviebox_api_server,'_get_stream_raw',lambda *a,**kw:
         {'url':'https://cdn.example.org/raw.mp4','cookie':'PRIVATE_COOKIE',
