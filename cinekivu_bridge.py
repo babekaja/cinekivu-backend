@@ -388,7 +388,7 @@ def install_cinekivu_routes(app):
         return {'code': 0, 'data': {'engine': 'CineKivu', 'provider_reachable': 'not-probed',
                                   'revision': delivery.API_REVISION, 'home': 'cinekivu-web',
                                   'provider_http_client': type(cine.engine.session).__module__.split('.')[0],
-                                  'client_ip_forwarding_enabled': forwarding_enabled(), 'cdn_http2_enabled': True,
+                                  'client_ip_forwarding_enabled': forwarding_enabled(), 'cdn_http2_enabled': True, 'cdn_android_fallback_enabled': True,
                                   'languages_priority': ['fr','en']}}
 
     @router.get('/titles/{subject_id}')

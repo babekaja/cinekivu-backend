@@ -8,6 +8,7 @@ import socket
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from urllib.parse import urlsplit
 
 import httpx
@@ -55,7 +56,7 @@ def _public_https_media_url(url):
 
 def _media_headers(stream):
     headers = {k: v for k, v in (stream.get("headers") or {}).items()
-               if k in ("User-Agent", "Referer", "Origin") and isinstance(v, str)
+               if k in ("User-Agent", "Referer", "Origin", "Accept", "Cookie") and isinstance(v, str)
                and "\r" not in v and "\n" not in v}
     # These values originate in the validated request context; revalidate at
     # the delivery boundary before forwarding to the media origin.
@@ -83,6 +84,28 @@ def _sample(response):
     return result
 
 
+# This CDN also serves the provider's Android app. Try that playback profile
+# only after an explicit client-profile refusal, never after auth/not-found.
+ANDROID_MEDIA_AGENT = "com.community.oneroom/50020121 (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)"
+
+
+@contextmanager
+def _cdn_stream(client, url, headers):
+    host = (urlsplit(url).hostname or "").lower()
+    supported = host == "hakunaymatata.com" or host.endswith(".hakunaymatata.com")
+    with client.stream("GET", url, headers=headers) as response:
+        if response.status_code not in (426, 428) or not supported:
+            yield response, headers
+            return
+    # The Android media request does not send browser-origin/forwarded headers.
+    # Preserve the signed DASH cookie and range; do not alter the signed URL.
+    alternate = {k: v for k, v in headers.items() if k in ("Cookie", "Range", "If-Range", "Accept-Encoding")}
+    alternate.update({"User-Agent": ANDROID_MEDIA_AGENT,
+                      "Accept": "video/mp4,video/*;q=0.9,*/*;q=0.8"})
+    with client.stream("GET", url, headers=alternate) as response:
+        yield response, alternate
+
+
 def _cdn_refusal(response, resource):
     details = f"HTTP {response.status_code}"
     if response.status_code == 426:
@@ -107,7 +130,7 @@ def _probe_mp4_playback(stream, expected_duration):
         return f"La source disponible est un extrait de {int(duration)} s, pas la vidéo complète."
     try:
         with httpx.Client(timeout=httpx.Timeout(10, connect=5), follow_redirects=False, http2=True) as client:
-            with client.stream("GET", stream["url"], headers={**_media_headers(stream), "Range": "bytes=0-31"}) as response:
+            with _cdn_stream(client, stream["url"], {**_media_headers(stream), "Range": "bytes=0-31"}) as (response, accepted_headers):
                 if response.status_code != 206:
                     return _cdn_refusal(response, "cette source vidéo")
                 mime = response.headers.get("content-type", "").split(";", 1)[0].lower()
@@ -118,6 +141,7 @@ def _probe_mp4_playback(stream, expected_duration):
                 sample = _sample(response)
                 if len(sample) < 8 or sample[4:8] != b"ftyp":
                     return "La réponse du CDN n’est pas un MP4 lisible."
+                stream["headers"] = {k: v for k, v in accepted_headers.items() if k != "Range"}
     except (httpx.HTTPError, KeyError, ValueError):
         return "Le CDN vidéo ne répond pas."
     return None
@@ -129,7 +153,7 @@ def _prepare_adaptive(stream):
     try:
         headers = _media_headers(stream)
         with httpx.Client(timeout=httpx.Timeout(8, connect=4), follow_redirects=False, http2=True) as client:
-            with client.stream("GET", stream["url"], headers=headers) as response:
+            with _cdn_stream(client, stream["url"], headers) as (response, headers):
                 if response.status_code != 200:
                     return None, _cdn_refusal(response, "le manifeste DASH")
                 manifest = bytearray()
@@ -162,6 +186,7 @@ def _prepare_adaptive(stream):
             issues = list(pool.map(check_fragment, probes))
         if any(issues):
             return None, next(issue for issue in issues if issue)
+        stream["headers"] = headers
         return presentation, None
     except ManifestError as exc:
         return None, str(exc)

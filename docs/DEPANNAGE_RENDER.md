@@ -122,3 +122,20 @@ Postman (107 requêtes), tous réussis. Une sonde réelle MobLand S1E1 en HTTP/2
 avec puis sans en-têtes d'adresse client réelle, obtient dans les deux cas
 HTTP 206, `bytes 0-31/673011531`, signature MP4 `ftyp`. Ce contrôle local ne
 valide pas le réseau Render.
+
+Render confirme le 426 même après négociation HTTP/2, sans en-tête Upgrade.
+Le statut correspond donc ici à un refus du CDN ; changer seulement de protocole
+n'a pas rendu MobLand lisible.
+
+Un repli borné sur le profil de lecture Android est ajouté pour les seuls hôtes
+`hakunaymatata.com` et leurs sous-domaines, après 426/428 uniquement. Il conserve
+les URL signées, le cookie DASH et les plages HTTP ; il n'envoie pas les en-têtes
+Origin/Referer/adresse transférée du navigateur. Le profil accepté n'est conservé
+qu'après vérification du média. Les 403/404 ne sont pas contournés par cette voie.
+Piste issue du code public du relais, sans réutilisation de son service ni de secrets :
+https://github.com/byspun/spun-moviebox-api/blob/main/relay/server.js
+
+Validation : 351 tests Python et 222 assertions Postman (107 requêtes) réussis.
+Les dix tests de protocole couvrent notamment la conservation du profil accepté
+pour le relais, l'absence de repli sur d'autres domaines et les refus persistants.
+Le résultat Render de ce repli reste à vérifier après publication.
