@@ -167,3 +167,10 @@ conclure à une saturation de la sortie Render. Le repli conserve désormais ce
 Referer. Validation : 351 tests Python et 222 assertions Postman, tous réussis.
 Le refus initial 426 et le rôle éventuel de l'empreinte TLS restent à distinguer
 sur le réseau Render.
+
+La comparaison finale publiée (`4073c9f`) donne HTTP 426 sur Render avec httpx
+et curl_cffi Chrome 152, pour la même URL et les mêmes en-têtes explicites.
+La comparaison locale donne 206 avec les deux. Les six assertions Postman du
+diagnostic Render réussissent mais `playable_count=0` : la lecture n'est pas
+rétablie. Le rapport de recherche détaille la séparation recommandée entre
+catalogue Render et chemin vidéo par un réseau accepté.

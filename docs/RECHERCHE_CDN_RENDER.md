@@ -3,8 +3,10 @@
 Le dernier HTTP 429 ne suffit pas à prouver une saturation ni un blocage de
 l'adresse Render. Une comparaison contrôlée révèle un défaut dans notre repli
 Android : il retirait le Referer attendu par le CDN. Le rétablir est la première
-correction concrète. Le filtrage de la sortie réseau demeure une hypothèse
-pour le refus initial 426, et la lecture Render reste à vérifier après correction.
+correction concrète. La comparaison finale sur Render reçoit 426 avec httpx comme avec curl_cffi
+Chrome 152. Les deux réussissent depuis le Mac. Une sortie réseau acceptée ou
+une lecture par le client est donc la piste suivante ; la lecture Render reste
+indisponible, et le filtrage exact du fournisseur n’est pas publiquement établi.
 
 ## Preuve obtenue sur notre réseau local
 
@@ -59,7 +61,7 @@ contrôlée a priorité sur les recettes génériques pour le fichier observé.
 | Ordre | Action | Ce qu'elle permet de déterminer |
 | --- | --- | --- |
 | 1 | Garder le Referer correct dans le repli Android et dans le relais enregistré | Éliminer le 429 que notre propre repli peut produire |
-| 2 | Comparer httpx et curl_cffi depuis Render, même URL fraîche et mêmes en-têtes explicites | Distinguer un refus lié au transport d'un refus qui persiste avec une empreinte navigateur |
+| 2 | Comparaison effectuée depuis Render, même URL fraîche et mêmes en-têtes explicites | HTTP 426 pour les deux ; l’empreinte Chrome seule ne suffit pas dans ce cas |
 | 3 | Vérifier les autres sources réellement fournies, notamment DASH et leurs cookies | Trouver une autre voie sans inventer un miroir ou transférer une signature sur un autre domaine |
 | 4 | Si les deux transports échouent depuis Render, comparer avec un relais personnel autorisé | Tester l'hypothèse de la sortie réseau |
 | 5 | Pour les applications natives, envisager une lecture par le réseau du téléphone | Garder Render pour le catalogue tout en évitant son réseau pour les octets vidéo |
@@ -145,4 +147,40 @@ paramètre et deux assertions de borne/confidentialité, via le plugin connecté
 Validation : **358 tests Python et 224 assertions Postman sur 107 requêtes**,
 code de sortie 0. En local, la comparaison réelle à en-têtes identiques donne
 206 et 32 octets MP4 valides avec httpx HTTP/2 comme avec curl_cffi Chrome 152.
-La comparaison Render reste à observer après publication.
+La comparaison Render finale est consignée ci-dessous.
+
+
+## Résultat final et architecture à retenir
+
+La révision `4073c9f` est observée sur Render par son marqueur de santé. La
+requête Postman MobLand opt-in est exécutée une fois sur cette révision : six
+assertions réussies, code de sortie 0, mais **zéro source jouable**.
+
+| Réseau | httpx HTTP/2 | curl_cffi Chrome 152 / HTTP/2 |
+| --- | --- | --- |
+| Mac local, profil explicite identique | 206, 32 octets MP4 valides | 206, 32 octets MP4 valides |
+| Render, comparaison sur la même URL fournie à chaque transport | 426, aucun média lu | 426, aucun média lu |
+
+La trace sûre est `build/render-browser-transport-comparison.json`. Ce test
+écarte l'idée qu'un remplacement simple de httpx par ce profil curl suffirait
+pour ce fichier sur cette sortie Render. Il ne démontre ni un blocage de tous
+les hébergeurs ni l'impossibilité de tout autre profil ou fournisseur.
+
+Pour CineKivu, la voie la mieux étayée est de **garder Render pour l'API et
+séparer le chemin des octets vidéo**. Deux déclinaisons sont possibles :
+
+1. Application native : récupérer et vérifier la source depuis le réseau du
+   téléphone, avec les en-têtes attendus, puis utiliser le lecteur partagé.
+   Les candidats directs doivent rester distincts des sources déjà vérifiées
+   par le serveur. Le téléphone doit valider les plages avant lecture ou
+   téléchargement. Cette intégration n'est pas encore réalisée.
+2. Frontend Web : relayer les octets par une sortie personnelle ou un service
+   explicitement prévu pour ce trafic, après une sonde d'acceptation. Le simple
+   navigateur ne peut pas librement reproduire tous les en-têtes. Le relais doit
+   préserver Range, cookies nécessaires, annulation et expiration des liens.
+
+Une machine locale allumée peut fournir la sortie déjà acceptée dans nos sondes,
+mais sa connexion montante et sa disponibilité deviennent celles du service.
+Aucun proxy externe n'est choisi ou acheté, aucun tunnel public n'est ouvert
+pendant cette recherche. Changer uniquement le plan Render ne constitue pas
+une solution vérifiée.
