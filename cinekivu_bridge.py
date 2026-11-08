@@ -388,7 +388,7 @@ def install_cinekivu_routes(app):
         return {'code': 0, 'data': {'engine': 'CineKivu', 'provider_reachable': 'not-probed',
                                   'revision': delivery.API_REVISION, 'home': 'cinekivu-web',
                                   'provider_http_client': type(cine.engine.session).__module__.split('.')[0],
-                                  'client_ip_forwarding_enabled': forwarding_enabled(), 'cdn_http2_enabled': True, 'cdn_android_fallback_enabled': True, 'cdn_android_referer': 'moviebox.ph',
+                                  'client_ip_forwarding_enabled': forwarding_enabled(), 'cdn_http2_enabled': True, 'cdn_android_fallback_enabled': True, 'cdn_android_referer': 'moviebox.ph', 'cdn_transport_probe_available': True,
                                   'languages_priority': ['fr','en']}}
 
     @router.get('/titles/{subject_id}')
@@ -487,7 +487,8 @@ def install_cinekivu_routes(app):
                 episode: int = Query(1, ge=1, le=9999),
                 quality: str = Query('auto', pattern='^(auto|360p|480p|720p|1080p|2160p)$'),
                 detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$'),
-                subject_type: int | None = Query(None, ge=1, le=2)):
+                subject_type: int | None = Query(None, ge=1, le=2),
+                probe_transport: bool = Query(False, description="Compare two bounded CDN transports; does not authorize playback")):
         valid_id(subject_id)
         try:
             # CineKivu performs its own media verification before advertising a local playback URL.
@@ -506,6 +507,10 @@ def install_cinekivu_routes(app):
                 subject_id, season=0 if is_movie else season, episode=0 if is_movie else episode,
                 detail_path=(details or {}).get('detail_path') or (details or {}).get('detailPath') or detail_path,
                 prefer_web_mp4=True)
+            transport_diagnostic = None
+            if probe_transport:
+                from cinekivu_source.transport_probe import compare_transports
+                transport_diagnostic = compare_transports(upstream)
             entries = delivery.prepare_streams(upstream)
             diagnostics = getattr(upstream, 'diagnostics', [])[:16]
             lookup_issues = []
@@ -543,6 +548,7 @@ def install_cinekivu_routes(app):
                     'issues': list(dict.fromkeys([s.get('playback_issue') for s in entries if s.get('playback_issue')] + lookup_issues))[:10],
                     'lookup_diagnostics': diagnostics, 'client_context_forwarded': bool(provider_client_headers()),
                     'audio_verified': False,
+                    **({'transport_diagnostic': transport_diagnostic} if probe_transport else {}),
                     'message': None if selected else 'Aucune source complète vérifiée disponible pour cet épisode.'}}
         except Exception as exc: raise _remote_error(exc) from exc
 

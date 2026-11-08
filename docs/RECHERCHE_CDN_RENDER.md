@@ -125,3 +125,24 @@ Validation complète du correctif : 351 tests Python et 222 assertions Postman
 sur 107 requêtes réussis, code de sortie 0. Les tests isolés du CDN sont simulés ;
 les comparaisons de profils détaillées plus haut sont de vraies lectures locales
 bornées à 32 octets. Le résultat Render après déploiement reste distinct.
+
+## Sonde comparative depuis le serveur
+
+Le contrôle Render du correctif Referer est observé : le MP4 reste en HTTP 426
+sur HTTP/2, le DASH en 429, et aucun média n'est vérifié. La correction élimine
+le défaut local établi, sans rétablir la lecture Render à elle seule.
+
+Une comparaison opt-in est ajoutée à la requête existante avec
+`probe_transport=true`. Elle choisit un seul MP4 fourni par le moteur, vérifie
+son adresse publique, conserve les mêmes en-têtes explicites pour les deux
+transports et demande `bytes=0-31`. Aucun URL signé, cookie, jeton, corps d'erreur
+ou adresse client n'est renvoyé. La sonde curl utilise un callback borné et ferme
+la requête ; elle n'autorise jamais une source pour le lecteur. Les appels sans
+ce paramètre ne lancent pas ce contrôle supplémentaire.
+
+La requête MobLand de la collection Postman existante est mise à jour avec ce
+paramètre et deux assertions de borne/confidentialité, via le plugin connecté.
+Validation : **358 tests Python et 224 assertions Postman sur 107 requêtes**,
+code de sortie 0. En local, la comparaison réelle à en-têtes identiques donne
+206 et 32 octets MP4 valides avec httpx HTTP/2 comme avec curl_cffi Chrome 152.
+La comparaison Render reste à observer après publication.

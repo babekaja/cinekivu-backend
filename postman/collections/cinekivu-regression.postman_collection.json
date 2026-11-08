@@ -4520,7 +4520,9 @@
               "const d=pm.response.json().data;",
               "pm.test('MobLand / nombre de sources cohérent',()=>pm.expect(d.playable_count).to.eql(d.sources.length));",
               "pm.test('MobLand / erreur fournisseur expliquée si aucun flux',()=>{if(d.sources.length===0)pm.expect(d.issues).to.be.an('array').that.is.not.empty;});",
-              "pm.test('MobLand / URL privées et cookies absents',()=>{d.sources.forEach(s=>{pm.expect(s.url).to.match(/^\\/api\\//);pm.expect(s).not.to.have.property('cookie');pm.expect(s).not.to.have.property('headers');});});"
+              "pm.test('MobLand / URL privées et cookies absents',()=>{d.sources.forEach(s=>{pm.expect(s.url).to.match(/^\\/api\\//);pm.expect(s).not.to.have.property('cookie');pm.expect(s).not.to.have.property('headers');});});",
+              "pm.test('MobLand / comparaison des transports bornée',()=>{const t=d.transport_diagnostic;pm.expect(t).to.be.an('object');pm.expect(t.available).to.be.a('boolean');if(t.available){pm.expect(t.requested_bytes).to.eql(32);pm.expect(t.same_headers).to.eql(true);['httpx','curl_cffi'].forEach(k=>pm.expect(t[k]).to.have.property('mp4_verified'));}});",
+              "pm.test('MobLand / diagnostic sans secrets',()=>{const t=JSON.stringify(d.transport_diagnostic);pm.expect(t).not.to.match(/https?:|sign=|Cookie|Authorization|private-token/);});"
             ],
             "type": "text/javascript"
           }
@@ -4531,7 +4533,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/4335165664987072680/streams?subject_type=2&season=1&episode=1&detail_path=mobland-wWHa6Cu6fa5",
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/4335165664987072680/streams?subject_type=2&season=1&episode=1&detail_path=mobland-wWHa6Cu6fa5&probe_transport=true",
           "host": [
             "{{baseUrl}}"
           ],
@@ -4559,13 +4561,17 @@
             {
               "key": "detail_path",
               "value": "mobland-wWHa6Cu6fa5"
+            },
+            {
+              "key": "probe_transport",
+              "value": "true"
             }
           ]
         }
       },
       "response": [],
       "createdAt": "2026-11-08T20:18:04.000Z",
-      "updatedAt": "2026-11-08T20:18:04.000Z",
+      "updatedAt": "2026-11-08T21:33:00.000Z",
       "uid": "41970206-fee15660-9b46-44bf-aae3-30d31de3e202"
     }
   ],
