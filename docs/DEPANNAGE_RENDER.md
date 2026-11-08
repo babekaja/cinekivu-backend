@@ -156,3 +156,14 @@ l'examen de ses règles est la prochaine piste, sans garantie que changer de
 plan Render ou de transport suffise. Aucun relais public tiers ni identifiant
 récupéré sur Internet n'a été utilisé. Le correctif est partiel, sans nouvelle
 preuve de lecture Render.
+
+## Correction de l'interprétation du 429
+
+La [recherche approfondie](RECHERCHE_CDN_RENDER.md) révèle une cause locale
+reproductible : le repli Android retirait le Referer. Sur une même URL, les
+mêmes en-têtes donnent 429 sans Referer, puis 206 et un MP4 valide en ajoutant
+uniquement `Referer: https://moviebox.ph/`. Le 429 final ne permet donc pas de
+conclure à une saturation de la sortie Render. Le repli conserve désormais ce
+Referer. Validation : 351 tests Python et 222 assertions Postman, tous réussis.
+Le refus initial 426 et le rôle éventuel de l'empreinte TLS restent à distinguer
+sur le réseau Render.

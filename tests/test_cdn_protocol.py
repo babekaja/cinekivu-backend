@@ -34,7 +34,8 @@ def test_cdn_profile_fallback_is_verified_and_persisted_for_relay(monkeypatch, s
         if len(calls) == 1:
             return httpx.Response(status)
         assert request.headers['Range'] == 'bytes=0-31'
-        assert 'Origin' not in request.headers and 'Referer' not in request.headers
+        assert 'Origin' not in request.headers
+        assert request.headers['Referer'] == 'https://moviebox.ph/'
         assert 'X-Forwarded-For' not in request.headers
         assert request.headers['User-Agent'].startswith('com.community.oneroom/')
         return httpx.Response(206, headers={'Content-Type': 'video/mp4',
@@ -48,6 +49,7 @@ def test_cdn_profile_fallback_is_verified_and_persisted_for_relay(monkeypatch, s
     replay = delivery._media_headers(stream)
     assert replay['User-Agent'].startswith('com.community.oneroom/')
     assert 'Origin' not in replay and 'X-Forwarded-For' not in replay
+    assert replay['Referer'] == 'https://moviebox.ph/'
     assert 'Range' not in replay
     assert len(calls) == 2 and calls[0].url == calls[1].url
 

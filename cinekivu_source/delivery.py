@@ -97,10 +97,11 @@ def _cdn_stream(client, url, headers):
         if response.status_code not in (426, 428) or not supported:
             yield response, headers
             return
-    # The Android media request does not send browser-origin/forwarded headers.
-    # Preserve the signed DASH cookie and range; do not alter the signed URL.
+    # Keep the CDN playback referer: removing it turns a valid local MP4
+    # into HTTP 429. Preserve signed cookies and ranges; keep the URL intact.
     alternate = {k: v for k, v in headers.items() if k in ("Cookie", "Range", "If-Range", "Accept-Encoding")}
     alternate.update({"User-Agent": ANDROID_MEDIA_AGENT,
+                      "Referer": "https://moviebox.ph/",
                       "Accept": "video/mp4,video/*;q=0.9,*/*;q=0.8"})
     with client.stream("GET", url, headers=alternate) as response:
         yield response, alternate
