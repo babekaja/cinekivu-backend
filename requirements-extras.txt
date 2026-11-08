@@ -1,2 +1,2 @@
-# Optionnel : client HTTP chrome-like utilisé par le moteur d'origine CineKivu.
-curl_cffi>=0.7,<1
+# Compatibilité historique : ce transport est désormais inclus dans requirements.txt.
+curl_cffi>=0.11,<1

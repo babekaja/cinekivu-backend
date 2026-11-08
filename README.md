@@ -17,8 +17,11 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-Le client HTTP optionnel `curl_cffi` peut être installé avec
-`python -m pip install -r requirements-extras.txt`.
+Le client HTTP `curl_cffi` est inclus dans `requirements.txt` pour utiliser
+le transport navigateur prévu par le moteur, y compris sur Render. Le fichier
+`requirements-extras.txt` reste disponible pour les anciennes installations.
+La santé `/api/v1/cinekivu/health` indique le transport réellement chargé dans
+`data.provider_http_client`.
 
 ## Démarrage
 

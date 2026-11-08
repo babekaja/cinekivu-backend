@@ -386,6 +386,7 @@ def install_cinekivu_routes(app):
     def source_health():
         return {'code': 0, 'data': {'engine': 'CineKivu', 'provider_reachable': 'not-probed',
                                   'revision': delivery.API_REVISION, 'home': 'cinekivu-web',
+                                  'provider_http_client': type(cine.engine.session).__module__.split('.')[0],
                                   'languages_priority': ['fr','en']}}
 
     @router.get('/titles/{subject_id}')

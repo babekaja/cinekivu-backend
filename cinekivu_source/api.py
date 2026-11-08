@@ -261,7 +261,7 @@ class MovieBoxEngine:
         self._auth_lock = threading.RLock()
         self.native_base = NATIVE_API_BASE
         if cr:
-            self.session = cr.Session(impersonate="chrome120")
+            self.session = cr.Session(impersonate="chrome")
         else:
             self.session = httpx.Client(timeout=25, follow_redirects=True)
 
@@ -1340,7 +1340,7 @@ def api_health():
         if current != digest:
             changed.append(name)
     return {"status": "ok", "api_revision": API_REVISION, "source_matches_loaded": not changed,
-            "changed_modules": changed, "features": ["mobile-v2", "resource-recovery", "mp4-relay", "dash-relay", "hls-fmp4"]}
+            "changed_modules": changed, "provider_http_client": type(engine.session).__module__.split(".")[0], "features": ["mobile-v2", "resource-recovery", "mp4-relay", "dash-relay", "hls-fmp4"]}
 
 @app.get("/api/stream/{subject_id}")
 def get_streams(subject_id: str, se: int = 0, ep: int = 0, detail_path: Optional[str] = None):
