@@ -68,3 +68,21 @@ lecture. Documentation du transport :
 https://curl-cffi.readthedocs.io/en/v0.11.4/impersonate.html
 
 Validation du transport installé (curl_cffi 0.17.0 sur Mac, profil Chrome courant) : 328 tests Python et 222 assertions Postman réussis. Le résultat sur Render doit être mesuré après le nouveau déploiement.
+
+## Contre-vérification réelle après activation du transport
+
+Le commit `9039a56` a été observé sur Render : la santé indique
+`provider_http_client=curl_cffi`. MobLand S1E1 renvoie toujours zéro flux,
+HTTP 406 sur les huit accès Web, refus mobile et aucune récupération resource.
+Changer de transport ne résout donc pas ce cas. Aucun test de lecture Render
+ne doit être présenté comme réussi. Le contrôle local conserve deux MP4
+avec ce transport dans la collection Postman.
+
+Le refus apparaît avant l'accès au fichier CDN : c'est l'API fournisseur de
+lecture qui refuse les requêtes issues de Render. Un filtrage du réseau ou
+de l'adresse de sortie est probable, sans être prouvé par le seul statut 406.
+L'étape externe restante consiste à faire vérifier cette adresse par le
+fournisseur et ses règles d'accès, ou à utiliser un hébergement/réseau accepté
+par celui-ci. Le tableau de bord Render expose les plages dans Connect > Outbound
+(documentation officielle liée plus haut). Les URL de CDN et cookies n'ont
+pas été publiés dans ce diagnostic.
