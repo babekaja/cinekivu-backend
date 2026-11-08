@@ -39,6 +39,32 @@ utiliser le port attribué par l'hébergeur :
 python -m uvicorn moviebox_api_server:app --host 0.0.0.0 --port "${PORT:-8000}"
 ```
 
+## Render et lecture vidéo
+
+Build command : `pip install -r requirements.txt`.
+Start command : `sh start-render.sh`.
+Health check : `/health`.
+
+Le service conserve les jetons temporaires de lecture en mémoire : utiliser
+un seul worker et une seule instance. Plusieurs workers sans registre partagé
+peuvent renvoyer « Session vidéo expirée » juste après la résolution d'un flux.
+
+Les routes publiques `/api/v1/cinekivu/*` et les relais `/api/play/*`,
+`/api/adaptive/*`, `/api/download/*` n'initialisent pas de session personnelle.
+Cela évite un appel d'authentification fournisseur supplémentaire avant de
+récupérer une fiche, vérifier une source ou lire une plage vidéo. Les endpoints
+de bibliothèque, compte et progression gardent leur session personnelle.
+
+En cas de lecture impossible, examiner `data.issues`, `data.message` et
+`data.playable_count` de `/api/v1/cinekivu/titles/{id}/streams`. Une réponse
+HTTP 200 de `/health` prouve uniquement que le serveur est actif. La fiche
+et la vidéo peuvent encore échouer si les fournisseurs ne répondent pas ou
+refusent l'adresse de sortie de l'hébergeur. Ne pas publier les cookies CDN
+ni des URL de lecture privées dans les logs ou les tickets.
+
+Guides officiels : [FastAPI sur Render](https://render.com/docs/deploy-fastapi)
+et [adresses réseau sortantes](https://render.com/docs/outbound-ip-addresses).
+
 ## Configuration et données
 
 Les variables se définissent dans l'environnement du processus :

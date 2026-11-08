@@ -116,7 +116,13 @@ async def sticky_anonymous_session(request: Request, call_next):
             or request.url.path == '/api/v1/enrichment'
             or request.url.path.startswith('/api/v1/enrichment/')
             or request.url.path == '/api/v1/downloads'
-            or request.url.path.startswith('/api/v1/downloads/')):
+            or request.url.path.startswith('/api/v1/downloads/')
+            # Public source metadata and token-protected media do not consume
+            # a personal OTT session. Avoid a second visitor login (and its
+            # shared authentication lock) before every anonymous media request.
+            or request.url.path == '/api/v1/cinekivu'
+            or request.url.path.startswith('/api/v1/cinekivu/')
+            or request.url.path.startswith(('/api/play/', '/api/adaptive/', '/api/download/'))):
         return await call_next(request)
     signed_cookie = request.cookies.get("session_id")
     sid = _verify_session(signed_cookie)
