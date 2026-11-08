@@ -83,6 +83,17 @@ def _sample(response):
     return result
 
 
+def _cdn_refusal(response, resource):
+    details = f"HTTP {response.status_code}"
+    if response.status_code == 426:
+        version = str(response.http_version)
+        details += f" ; transport {version}"
+        required = response.headers.get("upgrade", "")
+        if re.fullmatch(r"[A-Za-z0-9./+_, -]{1,80}", required):
+            details += f" ; protocole requis {required}"
+    return f"Le CDN refuse {resource} ({details})."
+
+
 def _probe_mp4_playback(stream, expected_duration):
     if not _public_https_media_url(stream.get("url")):
         return "Adresse du CDN non autorisée pour la lecture locale."
@@ -95,10 +106,10 @@ def _probe_mp4_playback(stream, expected_duration):
     if expected_duration >= 180 and 0 < duration * 3 < expected_duration:
         return f"La source disponible est un extrait de {int(duration)} s, pas la vidéo complète."
     try:
-        with httpx.Client(timeout=httpx.Timeout(10, connect=5), follow_redirects=False) as client:
+        with httpx.Client(timeout=httpx.Timeout(10, connect=5), follow_redirects=False, http2=True) as client:
             with client.stream("GET", stream["url"], headers={**_media_headers(stream), "Range": "bytes=0-31"}) as response:
                 if response.status_code != 206:
-                    return f"Le CDN refuse cette source vidéo (HTTP {response.status_code})."
+                    return _cdn_refusal(response, "cette source vidéo")
                 mime = response.headers.get("content-type", "").split(";", 1)[0].lower()
                 if mime not in ("video/mp4", "application/octet-stream"):
                     return "La source ne renvoie pas un fichier MP4."
@@ -117,10 +128,10 @@ def _prepare_adaptive(stream):
         return None, "Adresse du manifeste DASH non autorisée."
     try:
         headers = _media_headers(stream)
-        with httpx.Client(timeout=httpx.Timeout(8, connect=4), follow_redirects=False) as client:
+        with httpx.Client(timeout=httpx.Timeout(8, connect=4), follow_redirects=False, http2=True) as client:
             with client.stream("GET", stream["url"], headers=headers) as response:
                 if response.status_code != 200:
-                    return None, f"Le CDN refuse le manifeste DASH (HTTP {response.status_code})."
+                    return None, _cdn_refusal(response, "le manifeste DASH")
                 manifest = bytearray()
                 for chunk in response.iter_bytes(8192):
                     manifest.extend(chunk)
@@ -139,10 +150,10 @@ def _prepare_adaptive(stream):
             url = presentation.assets[local.removeprefix("asset/")]
             if not _public_https_media_url(url):
                 return "Adresse d’un fragment DASH non autorisée."
-            with httpx.Client(timeout=httpx.Timeout(6, connect=3), follow_redirects=False) as client:
+            with httpx.Client(timeout=httpx.Timeout(6, connect=3), follow_redirects=False, http2=True) as client:
                 with client.stream("GET", url, headers={**headers, "Range": "bytes=0-31"}) as response:
                     if response.status_code not in (200, 206):
-                        return f"Le CDN refuse un fragment DASH (HTTP {response.status_code})."
+                        return _cdn_refusal(response, "un fragment DASH")
                     sample = _sample(response)
                     if len(sample) < 8 or sample[4:8] not in (b"ftyp", b"styp", b"sidx", b"moof"):
                         return "Un fragment DASH ne contient pas de média MP4 lisible."
@@ -335,7 +346,7 @@ async def _relay_media(url, source_headers, request, activity):
     client = getattr(request.app.state, "cdn_client", None)
     owned = client is None
     if owned:
-        client = httpx.AsyncClient(timeout=httpx.Timeout(30, connect=8), follow_redirects=False)
+        client = httpx.AsyncClient(timeout=httpx.Timeout(30, connect=8), follow_redirects=False, http2=True)
     try:
         upstream = await client.send(client.build_request(request.method, url, headers=headers), stream=True)
     except httpx.HTTPError as exc:

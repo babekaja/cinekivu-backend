@@ -39,7 +39,7 @@ _LOADED_DIGESTS = {name: hashlib.sha256((_SERVICE_DIRECTORY / name).read_bytes()
 @asynccontextmanager
 async def lifespan(app):
     async with httpx.AsyncClient(timeout=httpx.Timeout(30, connect=8), follow_redirects=False,
-                                 limits=httpx.Limits(max_connections=16, max_keepalive_connections=8)) as client:
+                                 http2=True, limits=httpx.Limits(max_connections=16, max_keepalive_connections=8)) as client:
         app.state.cdn_client = client
         try:
             yield

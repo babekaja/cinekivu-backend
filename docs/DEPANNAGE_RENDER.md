@@ -104,3 +104,21 @@ exécutées hors Render ; le résultat Render reste à vérifier après déploie
 Références du périmètre de confiance :
 https://developers.cloudflare.com/fundamentals/reference/http-headers/
 https://render.com/docs/environment-variables
+
+## Contexte réel observé et vérification du CDN
+
+Après `882faaa`, Render obtient trois sources de mzfi.me : HTTP 200, code 0.
+Le refus 406 est donc levé pour cette requête réelle. Le CDN refuse toutefois
+les vérifications MP4 et DASH avec HTTP 426 ; `playable_count` reste zéro.
+
+Le transport CDN négocie maintenant HTTP/2, pour les sondes comme pour le relais.
+En cas de 426, le diagnostic indique le protocole réellement négocié et, si sa
+valeur est bornée et syntaxiquement sûre, l'en-tête Upgrade. Une réponse 426
+n'est pas assimilée à une preuve qu'HTTP/2 suffira ; le résultat Render doit
+être observé. Référence : https://www.rfc-editor.org/rfc/rfc9110.html#name-426-upgrade-required
+
+Validation locale de ce changement : 344 tests Python et 222 assertions
+Postman (107 requêtes), tous réussis. Une sonde réelle MobLand S1E1 en HTTP/2,
+avec puis sans en-têtes d'adresse client réelle, obtient dans les deux cas
+HTTP 206, `bytes 0-31/673011531`, signature MP4 `ftyp`. Ce contrôle local ne
+valide pas le réseau Render.
