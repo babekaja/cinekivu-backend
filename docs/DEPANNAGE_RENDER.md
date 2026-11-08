@@ -139,3 +139,20 @@ Validation : 351 tests Python et 222 assertions Postman (107 requêtes) réussis
 Les dix tests de protocole couvrent notamment la conservation du profil accepté
 pour le relais, l'absence de repli sur d'autres domaines et les refus persistants.
 Le résultat Render de ce repli reste à vérifier après publication.
+
+## Contre-vérification Render du repli Android
+
+La révision `46e59c1` est observée par la santé publique. Deux contrôles MobLand
+S1E1, espacés de plus d'une minute sans sonde média, donnent toujours zéro média
+vérifié : les vérifications MP4 et DASH reçoivent HTTP 429. Plusieurs accès Web
+renvoient bien HTTP 200, code 0 et trois liens. La lecture n'est donc pas rétablie
+sur Render. Le dernier statut ne permet pas d'attribuer le refus au seul protocole,
+au profil ou à l'adresse réseau ; il faut distinguer les liens obtenus d'un média
+lisible. Le repli ne relance pas une réponse 429, 403 ou 404.
+
+Les sondes Render cessent après cette contre-vérification pour ne pas aggraver
+une éventuelle limitation. Une sortie réseau autorisée par le fournisseur ou
+l'examen de ses règles est la prochaine piste, sans garantie que changer de
+plan Render ou de transport suffise. Aucun relais public tiers ni identifiant
+récupéré sur Internet n'a été utilisé. Le correctif est partiel, sans nouvelle
+preuve de lecture Render.
