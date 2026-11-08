@@ -504,6 +504,19 @@ def install_cinekivu_routes(app):
                 detail_path=(details or {}).get('detail_path') or (details or {}).get('detailPath') or detail_path,
                 prefer_web_mp4=True)
             entries = delivery.prepare_streams(upstream)
+            diagnostics = getattr(upstream, 'diagnostics', [])[:16]
+            lookup_issues = []
+            if not upstream and diagnostics:
+                for item in diagnostics:
+                    origin = item['provider']
+                    if item.get('http_status') and item['http_status'] != 200:
+                        lookup_issues.append(f"Source {origin} : HTTP {item['http_status']}.")
+                    elif item.get('error'):
+                        lookup_issues.append(f"Source {origin} indisponible" + (f" (code {item['code']})." if 'code' in item else '.'))
+                    elif item.get('code') not in (None, 0, '0', 200, '200'):
+                        lookup_issues.append(f"Source {origin} : code {item['code']}.")
+                if not lookup_issues:
+                    lookup_issues.append("Les fournisseurs n’ont renvoyé aucun flux pour cet épisode depuis ce serveur.")
             playable = []
             for item in entries:
                 url = item.get('play_url')
@@ -524,7 +537,8 @@ def install_cinekivu_routes(app):
             return {'code':0, 'data': {'subject_id': subject_id, 'season': season, 'episode': episode,
                     'url': selected['url'] if selected else None, 'sources': playable,
                     'playable_count': len(playable), 'source': 'cinekivu',
-                    'issues': list(dict.fromkeys(s.get('playback_issue') for s in entries if s.get('playback_issue')))[:10],
+                    'issues': list(dict.fromkeys([s.get('playback_issue') for s in entries if s.get('playback_issue')] + lookup_issues))[:10],
+                    'lookup_diagnostics': diagnostics,
                     'audio_verified': False,
                     'message': None if selected else 'Aucune source complète vérifiée disponible pour cet épisode.'}}
         except Exception as exc: raise _remote_error(exc) from exc

@@ -244,6 +244,13 @@ def signed_cookie_timestamp(cookie: str | None) -> int | None:
     match = re.search(r"(?:^|:)t=(\d+)(?:$|[;:])", cookie)
     return int(match.group(1)) if match else None
 
+class StreamLookup(list):
+    """Per-request, non-secret provider diagnostics retained through verification."""
+    def __init__(self):
+        super().__init__()
+        self.diagnostics = []
+
+
 class MovieBoxEngine:
     _instance = None
 
@@ -348,15 +355,23 @@ class MovieBoxEngine:
         raise HTTPException(status_code=502, detail="Les serveurs mobiles MovieBox ne répondent pas.")
 
     def native_play_info(self, subject_id: str, season: int, episode: int):
+        last_rejection = None
         for route in ("play-info/v2", "play-info"):
             try:
                 reply = self.api_request("GET", f"/wefeed-mobile-bff/subject-api/{route}?subjectId={subject_id}&se={season}&ep={episode}")
+                code = reply.get("code")
+                if code not in (None, 0, "0", 200, "200"):
+                    safe_code = str(code)[:24] if re.fullmatch(r"-?\d{1,12}", str(code)) else "refus"
+                    last_rejection = HTTPException(502, f"Le fournisseur refuse les informations de lecture (code {safe_code}).")
+                    continue
                 data = reply.get("data", reply)
                 if isinstance(data, dict) and isinstance(data.get("streams"), list) and data["streams"]:
                     return data
             except HTTPException as exc:
                 if exc.detail not in ("API returned HTTP 404", "API returned HTTP 410"):
                     raise
+        if last_rejection is not None:
+            raise last_rejection
         return {}
 
     def search(self, query: str, page: int = 1, per_page: int = 20) -> List[Dict[str, Any]]:
@@ -440,7 +455,7 @@ class MovieBoxEngine:
             except Exception:
                 detail_path = ""
         token = self.bootstrap_token()
-        streams: List[Dict[str, Any]] = []
+        streams = StreamLookup()
         seen_urls = set()
         dash_indices: Dict[str, int] = {}
         web_indices: Dict[str, int] = {}
@@ -473,10 +488,17 @@ class MovieBoxEngine:
             }
             try:
                 resp = self.session.get(play_url, headers=headers, timeout=5)
+                diagnostic = {"provider": "web", "host": urlsplit(domain).hostname, "http_status": resp.status_code}
+                streams.diagnostics.append(diagnostic)
                 if resp.status_code != 200:
                     continue
-                data = resp.json().get("data", {})
+                payload = resp.json()
+                code = payload.get("code")
+                if isinstance(code, (int, str)) and re.fullmatch(r"-?\d{1,12}", str(code)):
+                    diagnostic["code"] = code
+                data = payload.get("data") or {}
                 raw_streams = data.get("streams", [])
+                diagnostic["stream_count"] = len(raw_streams) + len(data.get("dash") or [])
                 dash_items = data.get("dash", [])
 
                 if raw_streams or dash_items:
@@ -562,7 +584,9 @@ class MovieBoxEngine:
                     if any((stamp := signed_media_timestamp(st.get("url"))) is None or
                            stamp > time.time() - 60 for st in raw_streams):
                         break
-            except Exception:
+            except Exception as exc:
+                streams.diagnostics.append({"provider": "web", "host": urlsplit(domain).hostname,
+                                            "error": type(exc).__name__})
                 continue
 
         if prefer_web_mp4:
@@ -586,6 +610,7 @@ class MovieBoxEngine:
 
         try:
             native_data = self.native_play_info(subject_id, season, episode)
+            streams.diagnostics.append({"provider": "mobile", "stream_count": len(native_data.get("streams") or [])})
             for st in native_data.get("streams", []):
                 raw_url = st.get("url")
                 cookie = st.get("signCookie")
@@ -622,12 +647,18 @@ class MovieBoxEngine:
                 if not policy_url and is_notice_video(final_url):
                     entry["playback_issue"] = "L’API mobile renvoie une vidéo d’avertissement, sans source complète."
                 streams.append(entry)
-        except Exception:
-            pass
+        except HTTPException as exc:
+            detail = str(exc.detail)
+            code = re.search(r"(?:HTTP |code )(-?\d{1,12})", detail)
+            streams.diagnostics.append({"provider": "mobile", "error": "provider_rejected",
+                                        **({"code": code.group(1)} if code else {})})
+        except Exception as exc:
+            streams.diagnostics.append({"provider": "mobile", "error": type(exc).__name__})
 
         if time.monotonic() - lookup_started < 25:
             resource_streams, recovery_issue = self._resource_streams(subject_id, season, episode, seen_urls)
             streams.extend(resource_streams)
+            streams.diagnostics.append({"provider": "resource", "stream_count": len(resource_streams)})
             if recovery_issue:
                 for stream in streams:
                     if stream.get("source") == "Mobile Native CDN" and stream.get("playback_issue"):

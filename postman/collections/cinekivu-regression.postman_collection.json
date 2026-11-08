@@ -5,7 +5,7 @@
     "description": "Régression CineKivu : catalogue réel, recherche, recommandations locales, référentiel, enrichissement externe, résolution SDK, transport HTTP synthétique et état utilisateur anonyme. Les écritures OTP/compte/publications sont simulées dans pytest. Le dossier Audit complet vérifie aussi les validations, les routes désactivées et les erreurs fournisseur explicites. Exécution locale : bash scripts/test_api.sh. baseUrl vise le backend réel sur 8000 ; sdkBaseUrl vise la fixture HTTP isolée sur 8001. Le plugin hébergé ne peut pas exécuter localhost.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "createdAt": "2026-11-06T22:31:13.000Z",
-    "updatedAt": "2026-11-08T15:22:53.000Z",
+    "updatedAt": "2026-11-08T20:18:04.000Z",
     "lastUpdatedBy": "41970206",
     "uid": "41970206-39202388-c5d9-4d8f-8e8e-f0c042a2e169"
   },
@@ -4508,6 +4508,65 @@
       "createdAt": "2026-11-08T15:22:53.000Z",
       "updatedAt": "2026-11-08T15:22:53.000Z",
       "uid": "41970206-245b2eab-cc3d-46e8-9ce6-210fc07ceb79"
+    },
+    {
+      "name": "Lecture — diagnostic MobLand S1E1",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('MobLand / HTTP 200',()=>pm.response.to.have.status(200));",
+              "const d=pm.response.json().data;",
+              "pm.test('MobLand / nombre de sources cohérent',()=>pm.expect(d.playable_count).to.eql(d.sources.length));",
+              "pm.test('MobLand / erreur fournisseur expliquée si aucun flux',()=>{if(d.sources.length===0)pm.expect(d.issues).to.be.an('array').that.is.not.empty;});",
+              "pm.test('MobLand / URL privées et cookies absents',()=>{d.sources.forEach(s=>{pm.expect(s.url).to.match(/^\\/api\\//);pm.expect(s).not.to.have.property('cookie');pm.expect(s).not.to.have.property('headers');});});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "id": "fee15660-9b46-44bf-aae3-30d31de3e202",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/4335165664987072680/streams?subject_type=2&season=1&episode=1&detail_path=mobland-wWHa6Cu6fa5",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "4335165664987072680",
+            "streams"
+          ],
+          "query": [
+            {
+              "key": "subject_type",
+              "value": "2"
+            },
+            {
+              "key": "season",
+              "value": "1"
+            },
+            {
+              "key": "episode",
+              "value": "1"
+            },
+            {
+              "key": "detail_path",
+              "value": "mobland-wWHa6Cu6fa5"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-08T20:18:04.000Z",
+      "updatedAt": "2026-11-08T20:18:04.000Z",
+      "uid": "41970206-fee15660-9b46-44bf-aae3-30d31de3e202"
     }
   ],
   "variable": [
