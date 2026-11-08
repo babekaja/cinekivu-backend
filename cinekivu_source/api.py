@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit
 
 import httpx
+from cinekivu_client_context import provider_client_headers
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -297,7 +298,7 @@ class MovieBoxEngine:
             for b_host in (BOOTSTRAP_HOST, "https://api.inmoviebox.com", "https://api6.aoneroom.com"):
                 try:
                     b_url = f"{b_host}/wefeed-mobile-bff/tab/ranking-list?tabId=0&categoryType=4516404531735022304&page=1&perPage=1"
-                    headers = build_auth_headers("GET", b_url, device_id=self.device_id)
+                    headers = {**build_auth_headers("GET", b_url, device_id=self.device_id), **provider_client_headers()}
                     resp = self.session.get(b_url, headers=headers, timeout=8)
                     token = json.loads(resp.headers.get("x-user") or "{}").get("token")
                     if isinstance(token, str) and token:
@@ -322,7 +323,7 @@ class MovieBoxEngine:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
-            headers = build_auth_headers(method, url, body=body, token=self.bearer_token if use_token else None, device_id=self.device_id)
+            headers = {**build_auth_headers(method, url, body=body, token=self.bearer_token if use_token else None, device_id=self.device_id), **provider_client_headers()}
             try:
                 if method.upper() == "POST":
                     resp = self.session.post(url, headers=headers, data=body.encode() if body is not None else None, timeout=min(6, remaining))
@@ -461,6 +462,7 @@ class MovieBoxEngine:
         web_indices: Dict[str, int] = {}
 
         web_lookup_started = time.monotonic()
+        web_auth_refreshed = False
         for domain in WEB_DOMAINS:
             if time.monotonic() - web_lookup_started >= 12:
                 break
@@ -477,7 +479,12 @@ class MovieBoxEngine:
             headers = {
                 "User-Agent": WEB_USER_AGENT,
                 "Referer": referer,
-                "Accept": "application/json",
+                "Accept": "application/json, text/plain, */*",
+                "Origin": domain,
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin",
+                **provider_client_headers(),
                 "x-client-info": json.dumps({"timezone": os.getenv("MOVIEBOX_TIMEZONE", "Africa/Lubumbashi")}),
                 "x-request-lang": os.getenv("CINEKIVU_PROVIDER_LANG", "fr"),
                 "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.75",
@@ -488,11 +495,18 @@ class MovieBoxEngine:
             }
             try:
                 resp = self.session.get(play_url, headers=headers, timeout=5)
+                payload = resp.json() if resp.status_code == 200 else {}
+                if not web_auth_refreshed and (resp.status_code in (401, 441) or
+                        (isinstance(payload, dict) and payload.get("code") in (401, 441, "401", "441"))):
+                    web_auth_refreshed = True
+                    token = self.bootstrap_token(force=True)
+                    headers["Authorization"] = f"Bearer {token}"
+                    resp = self.session.get(play_url, headers=headers, timeout=5)
+                    payload = resp.json() if resp.status_code == 200 else {}
                 diagnostic = {"provider": "web", "host": urlsplit(domain).hostname, "http_status": resp.status_code}
                 streams.diagnostics.append(diagnostic)
                 if resp.status_code != 200:
                     continue
-                payload = resp.json()
                 code = payload.get("code")
                 if isinstance(code, (int, str)) and re.fullmatch(r"-?\d{1,12}", str(code)):
                     diagnostic["code"] = code
@@ -533,6 +547,7 @@ class MovieBoxEngine:
                                 "User-Agent": "Mozilla/5.0",
                                 "Referer": f"{domain}/",
                                 "Origin": domain,
+                                **provider_client_headers(),
                             }
                         }
                         if previous_index is None:
@@ -557,6 +572,7 @@ class MovieBoxEngine:
                                     "User-Agent": "Mozilla/5.0",
                                     "Referer": f"{domain}/",
                                     "Origin": domain,
+                                    **provider_client_headers(),
                                 }
                             continue
                         if final_url and final_url not in seen_urls:
@@ -578,6 +594,7 @@ class MovieBoxEngine:
                                     "User-Agent": "Mozilla/5.0",
                                     "Referer": f"{domain}/",
                                     "Origin": domain,
+                                    **provider_client_headers(),
                                 }
                             })
                     # Timestamps rank mirrors; only an HTTP probe decides readability.
@@ -642,6 +659,7 @@ class MovieBoxEngine:
                     "headers": {
                         "User-Agent": MODERN_USER_AGENT,
                         "Referer": NATIVE_STREAM_REFERER,
+                        **provider_client_headers(),
                     }
                 }
                 if not policy_url and is_notice_video(final_url):
@@ -715,7 +733,7 @@ class MovieBoxEngine:
                                "quality": f"{quality}p" if quality else "Direct", "quality_value": quality,
                                "url": url, "size_mb": round(int(item.get("size") or 0) / 1048576, 1),
                                "codec": item.get("codecName") or item.get("codec"), "duration_sec": item.get("duration"),
-                               "headers": {"User-Agent": MODERN_USER_AGENT}})
+                               "headers": {"User-Agent": MODERN_USER_AGENT, **provider_client_headers()}})
         except Exception:
             pass
         return result, recovery_issue

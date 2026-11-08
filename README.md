@@ -79,6 +79,7 @@ Les variables se définissent dans l'environnement du processus :
 | `MOVIEBOX_SESSION_SECRET` | Secret de signature des sessions ; utiliser une valeur aléatoire d'au moins 32 caractères sur un hébergeur. |
 | `CORS_ORIGINS` | Origines Web autorisées, séparées par des virgules. |
 | `FRONTEND_URL` | Origine Web autorisée supplémentaire. |
+| `CINEKIVU_FORWARD_CLIENT_IP` | Contexte fournisseur : activé par défaut sur Render ; `0` désactive la transmission de l’IP réelle du client. |
 
 Les bases SQLite et, en l'absence de variable de secret, `data/.session_secret`
 sont créées automatiquement. Utiliser un disque persistant pour conserver les
@@ -156,3 +157,24 @@ supplémentaires pour un serveur actif et peuvent contacter les fournisseurs.
 
 La licence MIT de la source Moviebox-API adaptée est conservée dans
 [`cinekivu_source/LICENSE`](cinekivu_source/LICENSE), copyright 2026 Walter.
+
+### Contexte client du fournisseur sur Render
+
+Sur Render (`RENDER=true`), le backend transmet au fournisseur l'adresse publique
+réelle indiquée par `CF-Connecting-IP` au niveau du proxy de la plateforme.
+Cela partage cette adresse avec le fournisseur, pour le contexte de sa requête
+et du relais média. Aucune adresse fictive n'est utilisée. `X-Forwarded-For` et
+`X-Real-IP` reçus directement d'un client API ne sont pas considérés comme fiables.
+Les adresses privées, locales, multiples ou malformées sont écartées.
+
+Le contexte est isolé par requête ; il ne modifie pas les en-têtes globaux du
+client HTTP. L'IP n'est pas exposée dans le JSON de diagnostic. Le champ
+`data.client_context_forwarded` de la résolution indique seulement si le
+contexte a été transmis. Le menu de santé expose
+`data.client_ip_forwarding_enabled`. Hors Render, l'option est désactivée par
+défaut ; si elle est activée, seule l'adresse publique du pair direct est utilisée.
+
+Les en-têtes navigateur du point de lecture sont cohérents avec son domaine
+(Origin, Referer, Sec-Fetch-*). Un refus de jeton 401/441 déclenche au plus un
+renouvellement pour la recherche Web en cours. Une réponse 406 ne provoque pas
+de renouvellement en boucle.

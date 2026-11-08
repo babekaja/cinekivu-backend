@@ -1973,3 +1973,8 @@ if _preview_directory.is_dir():
 _frontend_directory = Path(__file__).resolve().parent.parent / 'web-release'
 if _frontend_directory.is_dir():
     app.mount('/app', StaticFiles(directory=str(_frontend_directory), html=True), name='frontend')
+
+# Outermost request context: copied into FastAPI worker threads, never shared
+# mutable session headers between concurrent clients.
+from cinekivu_client_context import ProviderClientContextMiddleware
+app.add_middleware(ProviderClientContextMiddleware)

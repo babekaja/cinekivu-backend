@@ -86,3 +86,21 @@ fournisseur et ses règles d'accès, ou à utiliser un hébergement/réseau acce
 par celui-ci. Le tableau de bord Render expose les plages dans Connect > Outbound
 (documentation officielle liée plus haut). Les URL de CDN et cookies n'ont
 pas été publiés dans ce diagnostic.
+
+## Essai du contexte client réel
+
+La piste signalée dans l'issue communautaire
+https://github.com/walterwhite-69/Moviebox-API/issues/4 et la PR non fusionnée
+https://github.com/walterwhite-69/Moviebox-API/pull/16 est implémentée avec
+validation et isolation : adresse publique réelle fournie par Cloudflare sur
+Render, en-têtes de contexte navigateur propres au domaine et renouvellement
+401/441 borné. Aucune IP résidentielle inventée, aucun proxy tiers ajouté.
+
+341 tests Python et 222 assertions Postman réussis avant publication. Les tests
+d'IP utilisent des transports simulés, y compris deux clients simultanés et le
+passage dans les threads FastAPI. Les lectures réelles de la collection sont
+exécutées hors Render ; le résultat Render reste à vérifier après déploiement.
+
+Références du périmètre de confiance :
+https://developers.cloudflare.com/fundamentals/reference/http-headers/
+https://render.com/docs/environment-variables

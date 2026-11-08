@@ -26,6 +26,7 @@ from cinekivu_source import delivery
 from moviebox_api.edition_search import is_french_edition, base_title, related_editions
 from cinekivu_audio_editions import discovered_editions, EditionCache
 from cinekivu_text import synopsis
+from cinekivu_client_context import provider_client_headers, forwarding_enabled
 
 log = logging.getLogger(__name__)
 
@@ -387,6 +388,7 @@ def install_cinekivu_routes(app):
         return {'code': 0, 'data': {'engine': 'CineKivu', 'provider_reachable': 'not-probed',
                                   'revision': delivery.API_REVISION, 'home': 'cinekivu-web',
                                   'provider_http_client': type(cine.engine.session).__module__.split('.')[0],
+                                  'client_ip_forwarding_enabled': forwarding_enabled(),
                                   'languages_priority': ['fr','en']}}
 
     @router.get('/titles/{subject_id}')
@@ -539,7 +541,7 @@ def install_cinekivu_routes(app):
                     'url': selected['url'] if selected else None, 'sources': playable,
                     'playable_count': len(playable), 'source': 'cinekivu',
                     'issues': list(dict.fromkeys([s.get('playback_issue') for s in entries if s.get('playback_issue')] + lookup_issues))[:10],
-                    'lookup_diagnostics': diagnostics,
+                    'lookup_diagnostics': diagnostics, 'client_context_forwarded': bool(provider_client_headers()),
                     'audio_verified': False,
                     'message': None if selected else 'Aucune source complète vérifiée disponible pour cet épisode.'}}
         except Exception as exc: raise _remote_error(exc) from exc

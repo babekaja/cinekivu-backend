@@ -57,6 +57,16 @@ def _media_headers(stream):
     headers = {k: v for k, v in (stream.get("headers") or {}).items()
                if k in ("User-Agent", "Referer", "Origin") and isinstance(v, str)
                and "\r" not in v and "\n" not in v}
+    # These values originate in the validated request context; revalidate at
+    # the delivery boundary before forwarding to the media origin.
+    for name in ("X-Forwarded-For", "X-Real-IP"):
+        value = (stream.get("headers") or {}).get(name)
+        try:
+            address = ipaddress.ip_address(value or "")
+            if address.is_global and not address.is_multicast:
+                headers[name] = str(address)
+        except ValueError:
+            pass
     cookie = stream.get("cookie")
     if isinstance(cookie, str) and cookie and len(cookie) <= 16384 and "\r" not in cookie and "\n" not in cookie:
         headers["Cookie"] = "; ".join(part.strip() for part in cookie.split(";") if part.strip())
