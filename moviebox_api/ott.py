@@ -161,7 +161,8 @@ DEFAULT_PREFS = {"language": "fr", "audio_language": "fr", "subtitle_language": 
 
 def install_ott_routes(app: FastAPI, get_session: Callable, mapper: Callable,
                        format_sections: Callable, extract_items: Callable,
-                       store: LocalStore | None = None, home_loader=None, catalog_loader=None, search_loader=None):
+                       store: LocalStore | None = None, home_loader=None, catalog_loader=None,
+                       search_loader=None, genre_loader=None):
     db = store or LocalStore()
     router = APIRouter(prefix="/api/v1", tags=["OTT / application"])
     search_cache: dict[tuple, tuple[float, dict]] = {}
@@ -326,6 +327,8 @@ def install_ott_routes(app: FastAPI, get_session: Callable, mapper: Callable,
     def genre(genre_id: str, page: int = Query(1, ge=1, le=200), session_id: Optional[str] = Cookie(None)):
         if genre_id not in {g["id"] for g in GENRES}:
             raise HTTPException(404, detail="Unknown genre")
+        if genre_loader is not None:
+            return result(genre_loader(genre_id, page), filter_scope='upstream-native')
         s = session(session_id)
         raw = _remote(s["content"].filter_items({"genre": genre_id}, page=page))
         return result({"items": _items(raw, mapper), "page": page, "genre": genre_id},

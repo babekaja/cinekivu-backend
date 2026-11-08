@@ -157,8 +157,11 @@ def install_media_routes(app):
 
     @router.get("/{subject_id}/overview")
     async def overview(subject_id: str):
+        from cinekivu_text import synopsis
         base, rich = await _metadata(subject_id, live=True)
         return {"subjectId": subject_id, "title": rich.get("title") if rich else base.get("title", ""),
+                "description": synopsis(*((base.get(key) for key in ('description', 'synopsis', 'overview', 'desc'))),
+                                        *((rich.get(key) for key in ('description', 'synopsis', 'overview', 'desc')) if rich else ())),
                 "rating": _score(base, rich), "trailer": _trailer(base, rich), "cast": _cast(base, rich),
                 "gallery": _gallery(base), "genre": base.get("genre"),
                 "country": base.get("countryName") or base.get("country"),

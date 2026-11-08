@@ -382,6 +382,7 @@ class MovieBoxEngine:
         return results
 
     def get_details(self, subject_id: str) -> Dict[str, Any]:
+        from cinekivu_text import synopsis
         url = f"/wefeed-mobile-bff/subject-api/get?subjectId={subject_id}"
         data = self.api_request("GET", url).get("data", {})
         detail_url_str = data.get("detailUrl", "")
@@ -391,7 +392,7 @@ class MovieBoxEngine:
             "title": data.get("title"),
             "subject_type": data.get("subjectType"),
             "type": "Movie" if data.get("subjectType") == 1 else "Series",
-            "description": data.get("description"),
+            "description": synopsis(*(data.get(key) for key in ('description', 'synopsis', 'overview', 'desc', 'introduction'))),
             "release_date": data.get("releaseDate"),
             "duration": data.get("duration"),
             "imdb_rating": data.get("imdbRatingValue"),

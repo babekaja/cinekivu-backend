@@ -12,6 +12,7 @@ import re
 import secrets
 import threading
 import time
+import unicodedata
 from collections import defaultdict
 from typing import Any
 from urllib.parse import urlsplit
@@ -24,6 +25,7 @@ from cinekivu_source import api as cine
 from cinekivu_source import delivery
 from moviebox_api.edition_search import is_french_edition, base_title, related_editions
 from cinekivu_audio_editions import discovered_editions, EditionCache
+from cinekivu_text import synopsis
 
 log = logging.getLogger(__name__)
 
@@ -85,7 +87,7 @@ def _subject(raw: dict):
     release = str(src.get('releaseDate') or src.get('release_date') or '')
     score = src.get('imdbRatingValue') or src.get('imdb_rating') or src.get('score')
     return {'subjectId': sid, 'id': sid, 'title': str(title), 'cover': cover,
-            'poster': cover, 'description': src.get('description') or '',
+            'poster': cover, 'description': synopsis(*(src.get(key) for key in ('description', 'synopsis', 'overview', 'desc', 'introduction'))),
             'releaseTime': release[:4] if release else '', 'score': str(score or 'N/A'),
             'subjectType': stype, 'language': src.get('language') or '',
             'edition': 'fr' if is_french_edition(str(title)) else 'unknown',
@@ -198,6 +200,47 @@ def cine_catalog(category: str, page: int = 1) -> dict:
     return {**result, 'category': category, 'total': result.get('totalLiveItems')}
 
 
+def cine_genre(genre_id: str, page: int = 1) -> dict:
+    """Translate stable app genre IDs to each current provider filter schema."""
+    from cinekivu_web import live_filter, native_filter_config
+    aliases = {
+        'action': ('action',), 'comedy': ('comedy', 'comedie'),
+        'drama': ('drama', 'drame'), 'thriller': ('thriller',),
+        'horror': ('horror', 'horreur'), 'romance': ('romance', 'romantique'),
+        'animation': ('animation',), 'documentary': ('documentary', 'documentaire'),
+        'science-fiction': ('sciencefiction', 'scifi'),
+        'fantasy': ('fantasy', 'fantastique', 'fantaisie'),
+    }
+    def key(value):
+        text = unicodedata.normalize('NFKD', str(value).casefold())
+        return ''.join(c for c in text if c.isascii() and c.isalnum())
+    values, pages, unavailable = {}, [], []
+    for category in ('movies', 'series'):
+        try:
+            config = native_filter_config(category)
+            group = next((g for g in config['items'] if g.get('filterType') == 'genre'), {})
+            native = next((g['id'] for g in group.get('filterVals', [])
+                           if any(key(g.get(field, '')) in aliases.get(genre_id, ())
+                                  for field in ('id', 'name'))), None)
+            if native is not None:
+                data = live_filter(category, page, genre=native)
+                pages.append(data)
+                for item in data['items']:
+                    values.setdefault(item['subjectId'], item)
+        except HTTPException as exc:
+            if exc.status_code < 500:
+                raise
+            unavailable.append(category)
+    if not pages:
+        if unavailable:
+            raise HTTPException(502, 'Catalogue par genre momentanément indisponible chez le fournisseur')
+        raise HTTPException(404, 'Genre actuellement absent des filtres du fournisseur')
+    return {'items': list(values.values()), 'page': page, 'genre': genre_id,
+            'hasMore': any(p.get('hasMore') for p in pages), 'partial': bool(unavailable),
+            'unavailableCategories': unavailable,
+            'source': 'web-bff-native-genre', 'stale': False}
+
+
 def cine_search(q: str, page: int = 1, subject_type: int = 0):
     q = q.strip()
     candidates = [q]
@@ -307,6 +350,35 @@ def convert_subtitle(raw: bytes):
     return ('\n'.join(srt_lines) + '\n').encode('utf-8')
 
 
+async def read_caption(token: str) -> bytes:
+    """Fetch one registered, bounded caption source; shared by playback and downloads."""
+    with _caption_lock:
+        source = _caption_sources.get(token)
+    if not source or source['expires'] < time.monotonic():
+        raise HTTPException(404, 'Sous-titres expirés ; rechargez la liste.')
+    if not delivery._public_https_media_url(source['url']):
+        raise HTTPException(502, 'Origine des sous-titres non autorisée')
+    try:
+        async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
+            async with client.stream('GET', source['url']) as resp:
+                if resp.status_code in (404, 410):
+                    raise HTTPException(404, 'Fichier de sous-titres absent chez le fournisseur')
+                if resp.status_code != 200:
+                    raise HTTPException(502, 'Sous-titres indisponibles')
+                if int(resp.headers.get('content-length', '0')) > MAX_CAPTION:
+                    raise HTTPException(413, 'Sous-titres trop volumineux')
+                chunks = bytearray()
+                async for chunk in resp.aiter_bytes():
+                    chunks.extend(chunk)
+                    if len(chunks) > MAX_CAPTION:
+                        raise HTTPException(413, 'Sous-titres trop volumineux')
+        return bytes(chunks)
+    except HTTPException:
+        raise
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(502, 'Format ou serveur de sous-titres indisponible') from exc
+
+
 def install_cinekivu_routes(app):
     router = APIRouter(prefix='/api/v1/cinekivu', tags=['CineKivu · sources et lecture'])
 
@@ -322,7 +394,7 @@ def install_cinekivu_routes(app):
             raw = cine.engine.get_details(valid_id(subject_id))
             data = _subject(raw) or {}
             from cinekivu_discovery import normalize_people
-            return {'code': 0, 'data': {**data, 'description': raw.get('description') or '',
+            return {'code': 0, 'data': {**data, 'description': synopsis(*(raw.get(key) for key in ('description', 'synopsis', 'overview', 'desc', 'introduction'))),
                     'cast': normalize_people(raw),
                     'runtime': raw.get('duration'), 'dubs': raw.get('dubs') or [],
                     'raw_dubs': raw.get('dubs') or [], 'source': 'cinekivu',
@@ -374,32 +446,33 @@ def install_cinekivu_routes(app):
 
     @router.get('/titles/{subject_id}/subtitles')
     def subtitles(subject_id: str, season: int = Query(1, ge=1, le=999),
-                  episode: int = Query(1, ge=1, le=9999)):
+                  episode: int = Query(1, ge=1, le=9999),
+                  subject_type: int | None = Query(None, ge=1, le=2)):
         try:
-            entries = cine.engine.get_subtitles(valid_id(subject_id), season=season, episode=episode)
+            valid_id(subject_id)
+            kind = subject_type
+            if kind is None:
+                try:
+                    detail = cine.engine.get_details(subject_id)
+                    kind = detail.get('subject_type') or detail.get('subjectType')
+                except Exception:
+                    pass
+            source_season, source_episode = (0, 0) if str(kind) == '1' else (season, episode)
+            entries = cine.engine.get_subtitles(subject_id, season=source_season, episode=source_episode)
+            # A failed/missing detail lookup must not silently query a film as episode 1.
+            if not entries and str(kind) not in ('1', '2'):
+                entries = cine.engine.get_subtitles(subject_id, season=0, episode=0)
+                if entries:
+                    source_season, source_episode = 0, 0
             return {'code':0, 'data': {'items': _register_captions(entries), 'source': 'cinekivu',
-                                     'priority': ['fr','en']}}
+                                     'priority': ['fr','en'], 'season': source_season,
+                                     'episode': source_episode}}
         except Exception as exc: raise _remote_error(exc) from exc
 
     @router.get('/captions/{token}.vtt')
     async def caption_file(token: str):
-        with _caption_lock:
-            source = _caption_sources.get(token)
-        if not source or source['expires'] < time.monotonic():
-            raise HTTPException(404, 'Sous-titres expirés ; rechargez la liste.')
-        if not delivery._public_https_media_url(source['url']):
-            raise HTTPException(502, 'Origine des sous-titres non autorisée')
         try:
-            async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
-                async with client.stream('GET', source['url']) as resp:
-                    if resp.status_code != 200: raise HTTPException(502, 'Sous-titres indisponibles')
-                    if int(resp.headers.get('content-length', '0')) > MAX_CAPTION:
-                        raise HTTPException(413, 'Sous-titres trop volumineux')
-                    chunks = bytearray()
-                    async for chunk in resp.aiter_bytes():
-                        chunks.extend(chunk)
-                        if len(chunks) > MAX_CAPTION: raise HTTPException(413, 'Sous-titres trop volumineux')
-            converted = convert_subtitle(bytes(chunks))
+            converted = convert_subtitle(await read_caption(token))
             return Response(converted, media_type='text/vtt; charset=utf-8',
                             headers={'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options':'nosniff'})
         except HTTPException: raise

@@ -65,7 +65,47 @@ environnements Python et caches de tests sont exclus de Git.
 - Les erreurs et les URL de lecture ne sont pas mises en cache. Les caches
   sont conservés en mémoire et se vident au redémarrage.
 
-## Tests
+## Fonctions issues des archives
+
+- `/api/v1/recommender` : catalogue local de 5 000 films, recherche, genres,
+  synopsis et recommandations TF-IDF/cosinus. [Contrat](docs/recommender-api.md).
+- `/api/v1/reference` : 601 œuvres et 610 éditions de référence, avec filtres,
+  taxonomie, collections, langues et traductions. [Contrat](docs/reference-api.md).
+- `/api/v1/enrichment/search` : recherche de métadonnées anime/manga dans
+  AniList et MangaDex. [Contrat](docs/enrichment-api.md).
+- `/api/v1/downloads` : recherche par titre et année, qualités exactes,
+  lots d'épisodes, fichiers nommés, sous-titres SRT/VTT et reprise HTTP.
+  [Contrat](docs/downloads-sdk-api.md).
+
+Les deux sources locales fonctionnent hors ligne, sans session fournisseur. Les
+identifiants locaux sont distincts des identifiants de lecture MovieBox.
+Le catalogue de référence est un relevé historique du 15 octobre 2026.
+
+[Analyse des ZIP](docs/ANALYSE_ZIP_ET_AJOUTS.md) et
+[validation des API](docs/validation-api.md).
+La [passe complémentaire du SDK](docs/ANALYSE_SDK_MOVIEBOX_024.md) et sa
+[validation du 8 novembre](docs/validation-sdk-api.md) détaillent les nouveaux téléchargements.
+L'[audit complet des 134 opérations](docs/AUDIT_COMPLET_API.md) décrit les
+corrections de compatibilité, les résultats Postman et les limites des fournisseurs.
+
+## Validation après chaque changement d'API
+
+Exécuter les tests Python ci-dessous puis la collection Postman contre le
+backend actif. La collection est conservée dans ce dépôt et dans le plugin
+Postman. Le runner cloud ne peut pas atteindre `127.0.0.1` : utiliser le
+CLI officiel ou Postman Desktop sur la même machine.
+
+`bash scripts/test_api.sh` enchaîne les tests Python et la collection avec
+Postman CLI ou Newman. Le runner Newman installé dans `build/api-tools/` est
+détecté automatiquement ; il peut aussi être fourni par `NEWMAN_BIN`.
+Le script prépare aussi le serveur de test SDK isolé sur le port 8001 pour
+contrôler les transferts HTTP et la reprise sans télécharger de film tiers.
+Il isole les bases de test et produit la couverture des routes dans
+`postman/reports/api-route-coverage.json`.
+
+```sh
+bash scripts/test_api.sh
+```
 
 ```sh
 python -m pip install -r requirements-dev.txt

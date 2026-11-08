@@ -1,0 +1,53 @@
+{
+  "connecteurs": {
+    "moviebox": {
+      "mode": "liens_pages_publiques_seulement",
+      "site": "https://movieboxhd.net/fr"
+    },
+    "jikan": {
+      "base": "https://api.jikan.moe/v4",
+      "endpoints": [
+        "GET /anime?q=",
+        "GET /anime/{id}",
+        "GET /anime/{id}/characters",
+        "GET /anime/{id}/staff",
+        "GET /anime/{id}/episodes",
+        "GET /manga?q=",
+        "GET /manga/{id}"
+      ],
+      "limites": "3 req/s et 60 req/min indiqués, usage à la demande"
+    },
+    "anilist": {
+      "base": "https://graphql.anilist.co",
+      "method": "POST",
+      "modes": [
+        "anime",
+        "manga"
+      ],
+      "usage": "consultation ciblée seulement, pas de collecte massive",
+      "commerce": "vérifier licence commerciale"
+    },
+    "mangadex": {
+      "base": "https://api.mangadex.org",
+      "endpoints": [
+        "GET /manga",
+        "GET /manga/{id}",
+        "GET /chapter"
+      ],
+      "usage": "metadata seulement, pas de scanlation ni de pages copiées",
+      "restriction": "MangaDex impose attribution, pas de publicités ni services payants"
+    },
+    "tmdb": {
+      "base": "https://api.themoviedb.org/3",
+      "usage": "traductions / acteurs / pays avec jeton propre"
+    }
+  },
+  "sources": {
+    "moviebox_anime_home": "https://movieboxhd.net/fr",
+    "moviebox_animated": "https://movieboxhd.net/fr/web/animated-series",
+    "jikan": "https://docs.api.jikan.moe/",
+    "anilist": "https://docs.anilist.co/",
+    "mangadex": "https://gitlab.com/mangadex-pub/mangadex-api-docs/-/blob/main/index.md",
+    "tmdb": "https://developer.themoviedb.org/docs/languages"
+  }
+}

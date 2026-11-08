@@ -1,0 +1,4523 @@
+{
+  "info": {
+    "_postman_id": "39202388-c5d9-4d8f-8e8e-f0c042a2e169",
+    "name": "CineKivu Backend V3 — audit complet et régression API",
+    "description": "Régression CineKivu : catalogue réel, recherche, recommandations locales, référentiel, enrichissement externe, résolution SDK, transport HTTP synthétique et état utilisateur anonyme. Les écritures OTP/compte/publications sont simulées dans pytest. Le dossier Audit complet vérifie aussi les validations, les routes désactivées et les erreurs fournisseur explicites. Exécution locale : bash scripts/test_api.sh. baseUrl vise le backend réel sur 8000 ; sdkBaseUrl vise la fixture HTTP isolée sur 8001. Le plugin hébergé ne peut pas exécuter localhost.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "createdAt": "2026-11-06T22:31:13.000Z",
+    "updatedAt": "2026-11-08T15:22:53.000Z",
+    "lastUpdatedBy": "41970206",
+    "uid": "41970206-39202388-c5d9-4d8f-8e8e-f0c042a2e169"
+  },
+  "item": [
+    {
+      "name": "Ajouts issus des ZIP — recommandations et référence",
+      "item": [
+        {
+          "name": "Corpus — 5000 films",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — 5000 films / contrat 1\", () => { pm.expect(result.data.total).to.eql(5000); });",
+                  "pm.test(\"Corpus — 5000 films / contrat 2\", () => { pm.expect(result.data.source).to.eql(\"moviebox-corpus\"); pm.expect(result.data.streamAvailability).to.eql(\"unknown\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a04dd1cc-0fbf-41c8-af73-3c84272121a1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "status"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:02:55.000Z",
+          "updatedAt": "2026-11-07T20:02:55.000Z",
+          "uid": "41970206-a04dd1cc-0fbf-41c8-af73-3c84272121a1"
+        },
+        {
+          "name": "Corpus — recherche sans accents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — recherche sans accents / contrat 1\", () => { pm.expect(result.data.total).to.eql(4); });",
+                  "pm.test(\"Corpus — recherche sans accents / contrat 2\", () => { pm.expect(result.data.items.map(x => x.movieId)).to.include(2874); pm.expect(result.data.items.map(x => x.movieId)).to.include(2416); });",
+                  "pm.test(\"Corpus — recherche sans accents / contrat 3\", () => { pm.expect(result.data.items.every(x => !(\"subjectId\" in x) && !(\"plot\" in x))).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "1b2d076a-7382-42cb-b1c3-968065787a0d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies?q=Asterix",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Asterix"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:02.000Z",
+          "updatedAt": "2026-11-07T20:03:02.000Z",
+          "uid": "41970206-1b2d076a-7382-42cb-b1c3-968065787a0d"
+        },
+        {
+          "name": "Corpus — pagination",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — pagination / contrat 1\", () => { pm.expect(result.data.items.map(x => x.movieId)).to.eql([2,3]); });",
+                  "pm.test(\"Corpus — pagination / contrat 2\", () => { pm.expect(result.data.hasMore).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "883a80fb-1e3d-4faf-991c-00cff57e428b",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies?page=2&page_size=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "page_size",
+                  "value": "2"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:07.000Z",
+          "updatedAt": "2026-11-07T20:03:07.000Z",
+          "uid": "41970206-883a80fb-1e3d-4faf-991c-00cff57e428b"
+        },
+        {
+          "name": "Corpus — genres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — genres / contrat 1\", () => { pm.expect(result.data.items.some(x => x.name === \"Animation\" && x.count > 0)).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "878651ef-09b2-406b-b6e8-f6e28a6cbf13",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/genres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "genres"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:14.000Z",
+          "updatedAt": "2026-11-07T20:03:14.000Z",
+          "uid": "41970206-878651ef-09b2-406b-b6e8-f6e28a6cbf13"
+        },
+        {
+          "name": "Corpus — fiche et synopsis",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — fiche et synopsis / contrat 1\", () => { pm.expect(result.data.movie.title).to.include(\"Britannia\"); });",
+                  "pm.test(\"Corpus — fiche et synopsis / contrat 2\", () => { pm.expect(result.data.movie.plot.length).to.be.above(10); pm.expect(result.data.movie.catalogId).to.eql(\"moviebox-corpus:2874\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "1ddbb8b7-b69b-4d4a-a0ef-7d17c1433a36",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies/2874",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies",
+                "2874"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:19.000Z",
+          "updatedAt": "2026-11-07T20:03:19.000Z",
+          "uid": "41970206-1ddbb8b7-b69b-4d4a-a0ef-7d17c1433a36"
+        },
+        {
+          "name": "Corpus — similarités réelles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — similarités réelles / contrat 1\", () => { pm.expect(result.data.items.length).to.eql(3); pm.expect(result.data.items[0].movieId).to.eql(3969); });",
+                  "pm.test(\"Corpus — similarités réelles / contrat 2\", () => { pm.expect(result.data.items.every(x => x.movieId !== 2874 && x.similarity > 0 && x.similarity <= 1)).to.eql(true); });",
+                  "pm.test(\"Corpus — similarités réelles / contrat 3\", () => { pm.expect(result.data.items.map(x => x.similarity)).to.eql(result.data.items.map(x => x.similarity).sort((a,b) => b-a)); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "349b4bfc-aa65-40e3-bd02-fa2226df95c5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies/2874/recommendations?limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies",
+                "2874",
+                "recommendations"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:25.000Z",
+          "updatedAt": "2026-11-07T20:03:25.000Z",
+          "uid": "41970206-349b4bfc-aa65-40e3-bd02-fa2226df95c5"
+        },
+        {
+          "name": "Corpus — synopsis facultatifs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — synopsis facultatifs / contrat 1\", () => { pm.expect(result.data.items).to.have.length(1); pm.expect(result.data.items[0].plot).to.be.a(\"string\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "3f514cfb-7f63-4a00-8ad9-c3cc40804bd5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies/2874/recommendations?limit=1&include_plots=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies",
+                "2874",
+                "recommendations"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "include_plots",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:32.000Z",
+          "updatedAt": "2026-11-07T20:03:32.000Z",
+          "uid": "41970206-3f514cfb-7f63-4a00-8ad9-c3cc40804bd5"
+        },
+        {
+          "name": "Corpus — recommandations par texte",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — recommandations par texte / contrat 1\", () => { pm.expect(result.data.items).to.have.length(3); });",
+                  "pm.test(\"Corpus — recommandations par texte / contrat 2\", () => { pm.expect(result.data.items.every(x => x.similarity > 0)).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "4c90bef9-3bdc-48b3-b036-1fcf7cb095e2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"astronaut space mars rocket rescue\",\"limit\":3}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/recommendations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "recommendations"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:40.000Z",
+          "updatedAt": "2026-11-07T20:03:40.000Z",
+          "uid": "41970206-4c90bef9-3bdc-48b3-b036-1fcf7cb095e2"
+        },
+        {
+          "name": "Corpus — aucun résultat inventé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — aucun résultat inventé / contrat 1\", () => { pm.expect(result.data.items).to.eql([]); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "aa531d70-3084-4015-b6ca-ca20ae02b04d",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"qzxvunknown zzyyunknown\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/recommendations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "recommendations"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:50.000Z",
+          "updatedAt": "2026-11-07T20:03:50.000Z",
+          "uid": "41970206-aa531d70-3084-4015-b6ca-ca20ae02b04d"
+        },
+        {
+          "name": "Corpus — texte vide refusé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — texte vide refusé / contrat 1\", () => { pm.expect(result.detail).to.be.an(\"array\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "17c889ec-e878-4a3c-a01b-6add76821f50",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"   \"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/recommendations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "recommendations"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:03:57.000Z",
+          "updatedAt": "2026-11-07T20:03:57.000Z",
+          "uid": "41970206-17c889ec-e878-4a3c-a01b-6add76821f50"
+        },
+        {
+          "name": "Corpus — limite invalide",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "4b5f035d-384d-4ffb-bd20-3239c36190c0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies/0/recommendations?limit=31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies",
+                "0",
+                "recommendations"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "31"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:05.000Z",
+          "updatedAt": "2026-11-07T20:04:05.000Z",
+          "uid": "41970206-4b5f035d-384d-4ffb-bd20-3239c36190c0"
+        },
+        {
+          "name": "Corpus — film absent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Corpus — film absent / contrat 1\", () => { pm.expect(result.detail).to.be.a(\"string\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "614ac05e-fbd5-448c-b1b4-ac6319524ac7",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies/5000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies",
+                "5000"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:11.000Z",
+          "updatedAt": "2026-11-07T20:04:11.000Z",
+          "uid": "41970206-614ac05e-fbd5-448c-b1b4-ac6319524ac7"
+        },
+        {
+          "name": "Corpus — page zéro refusée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "5d173732-ad50-48a9-8276-7f63e76e0e81",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommender/movies?page=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommender",
+                "movies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:16.000Z",
+          "updatedAt": "2026-11-07T20:04:16.000Z",
+          "uid": "41970206-5d173732-ad50-48a9-8276-7f63e76e0e81"
+        },
+        {
+          "name": "Référence — statistiques",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — statistiques / contrat 1\", () => { pm.expect(result.data.stats.total_oeuvres).to.eql(601); pm.expect(result.data.stats.editions_source_v4).to.eql(610); });",
+                  "pm.test(\"Référence — statistiques / contrat 2\", () => { pm.expect(result.data.historical).to.eql(true); pm.expect(result.data.sourceDate).to.eql(\"2026-10-15\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "14b4cd20-b59b-4706-9aff-e2dd0b3e514f",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "stats"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:21.000Z",
+          "updatedAt": "2026-11-07T20:04:21.000Z",
+          "uid": "41970206-14b4cd20-b59b-4706-9aff-e2dd0b3e514f"
+        },
+        {
+          "name": "Référence — taxonomie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — taxonomie / contrat 1\", () => { pm.expect(result.data.taxonomy.categories).to.have.length(12); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "3858becc-c72e-483e-8429-5e0e7fa1e02c",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/taxonomy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "taxonomy"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:28.000Z",
+          "updatedAt": "2026-11-07T20:04:28.000Z",
+          "uid": "41970206-3858becc-c72e-483e-8429-5e0e7fa1e02c"
+        },
+        {
+          "name": "Référence — filtres année et catégorie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — filtres année et catégorie / contrat 1\", () => { pm.expect(result.data.items.length).to.be.above(0); });",
+                  "pm.test(\"Référence — filtres année et catégorie / contrat 2\", () => { pm.expect(result.data.items.every(x => x.year === 2026 && x.categories.includes(\"series\"))).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "40e14683-95fa-4075-88d8-469b5f7752b8",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/search?category=series&year_min=2026&year_max=2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "series"
+                },
+                {
+                  "key": "year_min",
+                  "value": "2026"
+                },
+                {
+                  "key": "year_max",
+                  "value": "2026"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:38.000Z",
+          "updatedAt": "2026-11-07T20:04:38.000Z",
+          "uid": "41970206-40e14683-95fa-4075-88d8-469b5f7752b8"
+        },
+        {
+          "name": "Référence — audio non vérifié",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — audio non vérifié / contrat 1\", () => { pm.expect(result.data.total).to.eql(0); pm.expect(result.data.items).to.eql([]); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "ec38e1e7-e35c-4e9c-9f4e-b4a5b586b4c7",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/search?audio_language=fr",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "audio_language",
+                  "value": "fr"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:43.000Z",
+          "updatedAt": "2026-11-07T20:04:43.000Z",
+          "uid": "41970206-ec38e1e7-e35c-4e9c-9f4e-b4a5b586b4c7"
+        },
+        {
+          "name": "Référence — fiche originale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — fiche originale / contrat 1\", () => { pm.expect(result.data.work.external_ids.moviebox).to.include(\"4994654846008578576\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "94114f0d-874e-4aa2-be61-7a9943611ee5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/works/WRK-00001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "works",
+                "WRK-00001"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:47.000Z",
+          "updatedAt": "2026-11-07T20:04:47.000Z",
+          "uid": "41970206-94114f0d-874e-4aa2-be61-7a9943611ee5"
+        },
+        {
+          "name": "Référence — éditions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — éditions / contrat 1\", () => { pm.expect(result.data.items[0].id).to.eql(\"EDT-00001\"); pm.expect(result.data.items[0].status_availability).to.eql(\"metadata_seulement\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b0bf31db-3811-495b-a43e-875885b2b43e",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/works/WRK-00001/editions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "works",
+                "WRK-00001",
+                "editions"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:04:52.000Z",
+          "updatedAt": "2026-11-07T20:04:52.000Z",
+          "uid": "41970206-b0bf31db-3811-495b-a43e-875885b2b43e"
+        },
+        {
+          "name": "Référence — pistes audio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — pistes audio / contrat 1\", () => { pm.expect(result.data.value.audio).to.eql([]); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "2048bc6f-8aa8-4a62-a195-69f44d4bc1a6",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/editions/EDT-00001/tracks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "editions",
+                "EDT-00001",
+                "tracks"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:05:02.000Z",
+          "updatedAt": "2026-11-07T20:05:02.000Z",
+          "uid": "41970206-2048bc6f-8aa8-4a62-a195-69f44d4bc1a6"
+        },
+        {
+          "name": "Référence — recommandations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Référence — recommandations / contrat 1\", () => { pm.expect(result.data.items.length).to.be.within(1,5); });",
+                  "pm.test(\"Référence — recommandations / contrat 2\", () => { pm.expect(result.data.items.every(x => x.id !== \"WRK-00001\" && x.sharedGenres > 0)).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "e26ef842-b550-4f30-b48a-651ba63aa79e",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/works/WRK-00001/recommendations?limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "works",
+                "WRK-00001",
+                "recommendations"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:05:11.000Z",
+          "updatedAt": "2026-11-07T20:05:11.000Z",
+          "uid": "41970206-e26ef842-b550-4f30-b48a-651ba63aa79e"
+        },
+        {
+          "name": "Référence — années inversées",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b302f058-5090-4f2f-8685-9eb4b6f6e13e",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/search?year_min=2026&year_max=2020",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "year_min",
+                  "value": "2026"
+                },
+                {
+                  "key": "year_max",
+                  "value": "2020"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:05:20.000Z",
+          "updatedAt": "2026-11-07T20:05:20.000Z",
+          "uid": "41970206-b302f058-5090-4f2f-8685-9eb4b6f6e13e"
+        },
+        {
+          "name": "Référence — catégorie inconnue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "db20ea7d-01d0-4951-aab2-97ac1c7a0528",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/search?category=invalid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "invalid"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:05:26.000Z",
+          "updatedAt": "2026-11-07T20:05:26.000Z",
+          "uid": "41970206-db20ea7d-01d0-4951-aab2-97ac1c7a0528"
+        },
+        {
+          "name": "Référence — œuvre inconnue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a0e30716-e5cb-4949-b2a5-3738ab0da0d0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reference/works/unknown",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reference",
+                "works",
+                "unknown"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:05:31.000Z",
+          "updatedAt": "2026-11-07T20:05:31.000Z",
+          "uid": "41970206-a0e30716-e5cb-4949-b2a5-3738ab0da0d0"
+        },
+        {
+          "name": "Métadonnées — AniList réel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Métadonnées — AniList réel / contrat 1\", () => { pm.expect(result.data.provider).to.eql(\"anilist\"); pm.expect(result.data.items.length).to.eql(1); });",
+                  "pm.test(\"Métadonnées — AniList réel / contrat 2\", () => { pm.expect(result.data.items[0].externalId).to.be.a(\"string\"); pm.expect(result.data.streamAvailability).to.eql(\"unknown\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "0ae1f02a-4588-493d-87cb-903572292d41",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/enrichment/search?provider=anilist&kind=anime&q=Naruto&limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "enrichment",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "anilist"
+                },
+                {
+                  "key": "kind",
+                  "value": "anime"
+                },
+                {
+                  "key": "q",
+                  "value": "Naruto"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:14:02.000Z",
+          "updatedAt": "2026-11-07T20:14:02.000Z",
+          "uid": "41970206-0ae1f02a-4588-493d-87cb-903572292d41"
+        },
+        {
+          "name": "Métadonnées — MangaDex réel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"Métadonnées — MangaDex réel / contrat 1\", () => { pm.expect(result.data.provider).to.eql(\"mangadex\"); pm.expect(result.data.items.length).to.eql(1); });",
+                  "pm.test(\"Métadonnées — MangaDex réel / contrat 2\", () => { pm.expect(result.data.items[0].url).to.include(\"mangadex.org/title/\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "8d7b446e-bc7b-42e6-90fa-cd1977515308",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/enrichment/search?provider=mangadex&kind=manga&q=Naruto&limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "enrichment",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "mangadex"
+                },
+                {
+                  "key": "kind",
+                  "value": "manga"
+                },
+                {
+                  "key": "q",
+                  "value": "Naruto"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:14:08.000Z",
+          "updatedAt": "2026-11-07T20:14:08.000Z",
+          "uid": "41970206-8d7b446e-bc7b-42e6-90fa-cd1977515308"
+        },
+        {
+          "name": "Métadonnées — fournisseur invalide",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "90db6b4f-c23a-4f72-8a1f-fc10571a87d6",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/enrichment/search?provider=unknown&kind=manga&q=Naruto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "enrichment",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "unknown"
+                },
+                {
+                  "key": "kind",
+                  "value": "manga"
+                },
+                {
+                  "key": "q",
+                  "value": "Naruto"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:14:16.000Z",
+          "updatedAt": "2026-11-07T20:14:16.000Z",
+          "uid": "41970206-90db6b4f-c23a-4f72-8a1f-fc10571a87d6"
+        },
+        {
+          "name": "Métadonnées — MangaDex anime refusé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b8b67c2e-7757-4d58-9a06-b0dd167eb5c8",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/enrichment/search?provider=mangadex&kind=anime&q=Naruto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "enrichment",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "mangadex"
+                },
+                {
+                  "key": "kind",
+                  "value": "anime"
+                },
+                {
+                  "key": "q",
+                  "value": "Naruto"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:14:47.000Z",
+          "updatedAt": "2026-11-07T20:14:47.000Z",
+          "uid": "41970206-b8b67c2e-7757-4d58-9a06-b0dd167eb5c8"
+        },
+        {
+          "name": "Métadonnées — titre vide refusé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "d779d4c8-3443-4ff3-a091-680bc32eec2d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/enrichment/search?provider=anilist&kind=anime&q=%20%20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "enrichment",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "anilist"
+                },
+                {
+                  "key": "kind",
+                  "value": "anime"
+                },
+                {
+                  "key": "q",
+                  "value": "%20%20"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-07T20:15:01.000Z",
+          "updatedAt": "2026-11-07T20:15:01.000Z",
+          "uid": "41970206-d779d4c8-3443-4ff3-a091-680bc32eec2d"
+        }
+      ],
+      "id": "1de704f4-b997-4267-a57c-c01db4640f0f",
+      "createdAt": "2026-11-07T20:02:30.000Z",
+      "updatedAt": "2026-11-07T20:15:01.000Z",
+      "uid": "41970206-1de704f4-b997-4267-a57c-c01db4640f0f"
+    },
+    {
+      "name": "SDK 0.2.4 — téléchargement HTTP et reprise",
+      "item": [
+        {
+          "name": "SDK — capacités du backend actif",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — capacités du backend actif / contrat 1\", () => { pm.expect(result.data.maxBatchEpisodes).to.eql(20); pm.expect(result.data.storage).to.eql(\"client\"); });",
+                  "pm.test(\"SDK — capacités du backend actif / contrat 2\", () => { pm.expect(result.data.qualities).to.include(\"BEST\"); pm.expect(result.data.subtitleFormats).to.include(\"srt\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b9ebc794-e97f-46ea-a4c0-c236323a1d70",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/downloads/capabilities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "capabilities"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:03:31.000Z",
+          "updatedAt": "2026-11-08T09:03:31.000Z",
+          "uid": "41970206-b9ebc794-e97f-46ea-a4c0-c236323a1d70"
+        },
+        {
+          "name": "SDK — environnement HTTP synthétique",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — environnement HTTP synthétique / contrat 1\", () => { pm.expect(result.fixture).to.eql(\"cinekivu-sdk-http-v1\"); pm.collectionVariables.set(\"sdkMediaBytes\", result.mediaBytes); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "5c47dfad-9e3a-4e7d-80d2-cd394e9a07e6",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}/__sdk_fixture/status",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "__sdk_fixture",
+                "status"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:03:36.000Z",
+          "updatedAt": "2026-11-08T09:03:36.000Z",
+          "uid": "41970206-5c47dfad-9e3a-4e7d-80d2-cd394e9a07e6"
+        },
+        {
+          "name": "SDK — titre année qualité et sous-titres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — titre année qualité et sous-titres / contrat 1\", () => { pm.expect(result.data.subjectId).to.eql(\"fixture-old\"); pm.expect(result.data.year).to.eql(\"2009\"); });",
+                  "pm.test(\"SDK — titre année qualité et sous-titres / contrat 2\", () => { pm.expect(result.data.file.qualityValue).to.eql(720); pm.expect(result.data.availableQualities).to.eql([360,720,1080]); });",
+                  "pm.test(\"SDK — titre année qualité et sous-titres / contrat 3\", () => { pm.expect(pm.response.text()).not.to.include(\"/__sdk_fixture/video/\"); pm.expect(result.data.audioVerified).to.eql(false); });",
+                  "pm.test(\"SDK — titre année qualité et sous-titres / contrat 4\", () => { pm.collectionVariables.set(\"sdkAsset\", result.data.file.url); pm.collectionVariables.set(\"sdkResume\",result.data.file.resumeUrl); pm.collectionVariables.set(\"sdkCaption\", result.data.captions[0].url); pm.expect(result.data.captions[0].format).to.eql(\"srt\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "d514822b-755f-4fe8-8d56-1302d4849720",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\":\"CineKivu Démo\",\"year\":2009,\"quality\":\"720p\",\"caption_languages\":[\"fr\"],\"caption_format\":\"srt\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:03:41.000Z",
+          "updatedAt": "2026-11-08T09:03:41.000Z",
+          "uid": "41970206-d514822b-755f-4fe8-8d56-1302d4849720"
+        },
+        {
+          "name": "SDK — fichier MP4 complet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"SDK — fichier MP4 complet / contrat 1\", () => { pm.expect(pm.response.text().length).to.eql(Number(pm.collectionVariables.get(\"sdkMediaBytes\"))); pm.expect(pm.response.text().slice(4,8)).to.eql(\"ftyp\"); });",
+                  "pm.test(\"SDK — fichier MP4 complet / contrat 2\", () => { pm.collectionVariables.set(\"sdkFullBody\",pm.response.text()); pm.collectionVariables.set(\"sdkEtag\",pm.response.headers.get(\"etag\")); pm.expect(pm.response.headers.get(\"content-disposition\")).to.include(\"filename*=UTF-8\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "9f4b13c9-5c45-465c-9cf3-4bd68b35f59e",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkAsset}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkAsset}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:03:49.000Z",
+          "updatedAt": "2026-11-08T09:03:49.000Z",
+          "uid": "41970206-9f4b13c9-5c45-465c-9cf3-4bd68b35f59e"
+        },
+        {
+          "name": "SDK — HEAD du fichier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"SDK — HEAD du fichier / contrat 1\", () => { pm.expect(pm.response.text()).to.eql(\"\"); pm.expect(Number(pm.response.headers.get(\"content-length\"))).to.eql(Number(pm.collectionVariables.get(\"sdkMediaBytes\"))); });",
+                  "pm.test(\"SDK — HEAD du fichier / contrat 2\", () => { pm.expect(pm.response.headers.get(\"accept-ranges\")).to.eql(\"bytes\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "04e81582-33db-4732-9b5d-0c04917d97c5",
+          "request": {
+            "method": "HEAD",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkAsset}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkAsset}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:03:56.000Z",
+          "updatedAt": "2026-11-08T09:03:56.000Z",
+          "uid": "41970206-04e81582-33db-4732-9b5d-0c04917d97c5"
+        },
+        {
+          "name": "SDK — première plage MP4",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 206\", () => pm.response.to.have.status(206));",
+                  "pm.test(\"SDK — première plage MP4 / contrat 1\", () => { pm.expect(pm.response.text().length).to.eql(32); pm.expect(pm.response.text().slice(4,8)).to.eql(\"ftyp\"); });",
+                  "pm.test(\"SDK — première plage MP4 / contrat 2\", () => { pm.expect(pm.response.headers.get(\"content-range\")).to.eql(\"bytes 0-31/\"+pm.collectionVariables.get(\"sdkMediaBytes\")); pm.collectionVariables.set(\"sdkPrefix\",pm.response.text()); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b8b62ae9-1eba-4362-8603-816293d90223",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=0-31"
+              },
+              {
+                "key": "If-Range",
+                "value": "{{sdkEtag}}"
+              }
+            ],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkAsset}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkAsset}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:04:01.000Z",
+          "updatedAt": "2026-11-08T09:04:01.000Z",
+          "uid": "41970206-b8b62ae9-1eba-4362-8603-816293d90223"
+        },
+        {
+          "name": "SDK — reprise du reste du MP4",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 206\", () => pm.response.to.have.status(206));",
+                  "pm.test(\"SDK — reprise du reste du MP4 / contrat 1\", () => { pm.expect(pm.response.text().length).to.eql(Number(pm.collectionVariables.get(\"sdkMediaBytes\"))-32); });",
+                  "pm.test(\"SDK — reprise du reste du MP4 / contrat 2\", () => { pm.expect(pm.collectionVariables.get(\"sdkPrefix\")+pm.response.text()).to.eql(pm.collectionVariables.get(\"sdkFullBody\")); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "002ef886-8c32-4525-ae7a-aecbc969ab31",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=32-"
+              },
+              {
+                "key": "If-Range",
+                "value": "{{sdkEtag}}"
+              }
+            ],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkAsset}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkAsset}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:04:06.000Z",
+          "updatedAt": "2026-11-08T09:04:06.000Z",
+          "uid": "41970206-002ef886-8c32-4525-ae7a-aecbc969ab31"
+        },
+        {
+          "name": "SDK — If-Range différent recharge entièrement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"SDK — If-Range différent recharge entièrement / contrat 1\", () => { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get(\"sdkFullBody\")); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b00e9fdb-4645-4048-8a75-42062ef3f6c0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=32-"
+              },
+              {
+                "key": "If-Range",
+                "value": "\"changed\""
+              }
+            ],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkAsset}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkAsset}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:04:47.000Z",
+          "updatedAt": "2026-11-08T09:04:47.000Z",
+          "uid": "41970206-b00e9fdb-4645-4048-8a75-42062ef3f6c0"
+        },
+        {
+          "name": "SDK — suffixe Range",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 206\", () => pm.response.to.have.status(206));",
+                  "pm.test(\"SDK — suffixe Range / contrat 1\", () => { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get(\"sdkFullBody\").slice(-8)); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "7ae9b114-4056-4f7c-9edc-af2cbcfbdebf",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=-8"
+              }
+            ],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkAsset}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkAsset}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:04:55.000Z",
+          "updatedAt": "2026-11-08T09:04:55.000Z",
+          "uid": "41970206-7ae9b114-4056-4f7c-9edc-af2cbcfbdebf"
+        },
+        {
+          "name": "SDK — plages multiples refusées",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 416\", () => pm.response.to.have.status(416));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "ee34c84f-d214-42a6-a685-dc0cd72ed7d8",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=0-7,16-31"
+              }
+            ],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkAsset}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkAsset}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:00.000Z",
+          "updatedAt": "2026-11-08T09:05:00.000Z",
+          "uid": "41970206-ee34c84f-d214-42a6-a685-dc0cd72ed7d8"
+        },
+        {
+          "name": "SDK — sous-titre SRT nommé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"SDK — sous-titre SRT nommé / contrat 1\", () => { pm.expect(pm.response.text()).to.include(\"00:00:01,000 --> 00:00:03,000\"); pm.expect(pm.response.text()).to.include(\"Bonjour CineKivu\"); });",
+                  "pm.test(\"SDK — sous-titre SRT nommé / contrat 2\", () => { pm.expect(pm.response.headers.get(\"content-disposition\")).to.include(\"fr.srt\"); pm.collectionVariables.set(\"sdkCaptionBytes\",pm.response.text().length); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a26869b2-dd86-499a-859f-10931387ae80",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkCaption}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkCaption}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:06.000Z",
+          "updatedAt": "2026-11-08T09:05:06.000Z",
+          "uid": "41970206-a26869b2-dd86-499a-859f-10931387ae80"
+        },
+        {
+          "name": "SDK — HEAD du sous-titre",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"SDK — HEAD du sous-titre / contrat 1\", () => { pm.expect(pm.response.text()).to.eql(\"\"); pm.expect(Number(pm.response.headers.get(\"content-length\"))).to.eql(Number(pm.collectionVariables.get(\"sdkCaptionBytes\"))); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "00058cb7-2930-4ac8-992a-2dd38bfcd421",
+          "request": {
+            "method": "HEAD",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkCaption}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkCaption}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:11.000Z",
+          "updatedAt": "2026-11-08T09:05:11.000Z",
+          "uid": "41970206-00058cb7-2930-4ac8-992a-2dd38bfcd421"
+        },
+        {
+          "name": "SDK — qualité minimale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — qualité minimale / contrat 1\", () => { pm.expect(result.data.file.qualityValue).to.eql(360); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "eca66a45-180d-484f-8817-d46501bce9e3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-old\",\"quality\":\"WORST\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:27.000Z",
+          "updatedAt": "2026-11-08T09:05:27.000Z",
+          "uid": "41970206-eca66a45-180d-484f-8817-d46501bce9e3"
+        },
+        {
+          "name": "SDK — qualité maximale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — qualité maximale / contrat 1\", () => { pm.expect(result.data.file.qualityValue).to.eql(1080); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a63be69c-1ee0-4ec5-95b2-91e4422b48b3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-old\",\"quality\":\"BEST\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:37.000Z",
+          "updatedAt": "2026-11-08T09:05:37.000Z",
+          "uid": "41970206-a63be69c-1ee0-4ec5-95b2-91e4422b48b3"
+        },
+        {
+          "name": "SDK — qualité absente sans substitution",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — qualité absente sans substitution / contrat 1\", () => { pm.expect(result.detail.code).to.eql(\"quality_unavailable\"); pm.expect(result.detail.availableQualities).to.eql([360,720,1080]); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f92ac948-03d3-44c8-a6e4-eb82d0d6bd54",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-old\",\"quality\":\"480p\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:46.000Z",
+          "updatedAt": "2026-11-08T09:05:46.000Z",
+          "uid": "41970206-f92ac948-03d3-44c8-a6e4-eb82d0d6bd54"
+        },
+        {
+          "name": "SDK — année absente sans substitution",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "4e6f360c-76a7-4e4b-a3d3-800769ed081c",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\":\"CineKivu Démo\",\"year\":1999}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:51.000Z",
+          "updatedAt": "2026-11-08T09:05:51.000Z",
+          "uid": "41970206-4e6f360c-76a7-4e4b-a3d3-800769ed081c"
+        },
+        {
+          "name": "SDK — sous-titres seuls et langue manquante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — sous-titres seuls et langue manquante / contrat 1\", () => { pm.expect(result.data.file).to.eql(null); pm.expect(result.data.captions).to.have.length(1); });",
+                  "pm.test(\"SDK — sous-titres seuls et langue manquante / contrat 2\", () => { pm.expect(result.data.missingCaptionLanguages).to.eql([\"ja\"]); pm.expect(result.data.partial).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a9221de6-f041-4d3c-93dd-4efa2fa945e6",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-old\",\"captions_only\":true,\"caption_languages\":[\"fr\",\"ja\"]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:05:57.000Z",
+          "updatedAt": "2026-11-08T09:05:57.000Z",
+          "uid": "41970206-a9221de6-f041-4d3c-93dd-4efa2fa945e6"
+        },
+        {
+          "name": "SDK — lot partiel et ordre des épisodes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — lot partiel et ordre des épisodes / contrat 1\", () => { pm.expect(result.data.items.map(x=>x.episode)).to.eql([2,3,1]); pm.expect(result.data.readyCount).to.eql(2); });",
+                  "pm.test(\"SDK — lot partiel et ordre des épisodes / contrat 2\", () => { pm.expect(result.data.items[1].status).to.eql(\"unavailable\"); pm.expect(result.data.partial).to.eql(true); pm.expect(result.data.items[0].data.file.filename).to.include(\"S01E02\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "8ae70751-a241-4210-b70b-2b31bd3358dc",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-series\",\"episodes\":[2,3,1],\"quality\":\"720p\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/batch",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "batch"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:04.000Z",
+          "updatedAt": "2026-11-08T09:06:04.000Z",
+          "uid": "41970206-8ae70751-a241-4210-b70b-2b31bd3358dc"
+        },
+        {
+          "name": "SDK — plage d'épisodes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — plage d'épisodes / contrat 1\", () => { pm.expect(result.data.items.map(x=>x.episode)).to.eql([1,2]); pm.expect(result.data.readyCount).to.eql(2); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "5030b3a0-2e7a-49bd-bdb4-9a7da44c591d",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-series\",\"start_episode\":1,\"limit\":2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/batch",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "batch"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:10.000Z",
+          "updatedAt": "2026-11-08T09:06:10.000Z",
+          "uid": "41970206-5030b3a0-2e7a-49bd-bdb4-9a7da44c591d"
+        },
+        {
+          "name": "SDK — épisodes répétés refusés",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a73fcb57-a16b-4906-b58b-33f10e602e20",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-series\",\"episodes\":[1,1]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/batch",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "batch"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:15.000Z",
+          "updatedAt": "2026-11-08T09:06:15.000Z",
+          "uid": "41970206-a73fcb57-a16b-4906-b58b-33f10e602e20"
+        },
+        {
+          "name": "SDK — saison absente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "4f309f9e-7d33-44b1-989b-b204bf6d8992",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-series\",\"season\":2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/batch",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "batch"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:24.000Z",
+          "updatedAt": "2026-11-08T09:06:24.000Z",
+          "uid": "41970206-4f309f9e-7d33-44b1-989b-b204bf6d8992"
+        },
+        {
+          "name": "SDK — épisode hors saison",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "5ea77885-81f8-4b4c-b5b2-0649bffdac87",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-series\",\"episodes\":[5]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/batch",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "batch"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:31.000Z",
+          "updatedAt": "2026-11-08T09:06:31.000Z",
+          "uid": "41970206-5ea77885-81f8-4b4c-b5b2-0649bffdac87"
+        },
+        {
+          "name": "SDK — qualité invalide",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a680963e-6e2c-4428-9484-4ffd3e85f623",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-old\",\"quality\":\"invalid\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:36.000Z",
+          "updatedAt": "2026-11-08T09:06:36.000Z",
+          "uid": "41970206-a680963e-6e2c-4428-9484-4ffd3e85f623"
+        },
+        {
+          "name": "SDK — jeton inconnu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "8983afd7-a834-44c3-b4f5-ff455832cfeb",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/assets/unknown",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "assets",
+                "unknown"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:45.000Z",
+          "updatedAt": "2026-11-08T09:06:45.000Z",
+          "uid": "41970206-8983afd7-a834-44c3-b4f5-ff455832cfeb"
+        },
+        {
+          "name": "SDK — sous-titres seuls sans langue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "const result = pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "05d3818e-8bed-4613-9b9b-99b63fb6a76b",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject_id\":\"fixture-old\",\"captions_only\":true}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/downloads/resolve",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "downloads",
+                "resolve"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:06:52.000Z",
+          "updatedAt": "2026-11-08T09:06:52.000Z",
+          "uid": "41970206-05d3818e-8bed-4613-9b9b-99b63fb6a76b"
+        },
+        {
+          "name": "SDK — perte des anciens jetons",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — perte des anciens jetons / contrat 1\", () => { pm.expect(result.reset).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "07888a90-bc6d-4cbc-91a7-91971bca7fc3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{sdkBaseUrl}}/__sdk_fixture/reset-sources",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "__sdk_fixture",
+                "reset-sources"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:07:00.000Z",
+          "updatedAt": "2026-11-08T09:07:00.000Z",
+          "uid": "41970206-07888a90-bc6d-4cbc-91a7-91971bca7fc3"
+        },
+        {
+          "name": "SDK — reprise stable après perte des jetons",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 206\", () => pm.response.to.have.status(206));",
+                  "pm.test(\"SDK — reprise stable après perte des jetons / contrat 1\", () => { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get(\"sdkFullBody\").slice(32)); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "338c9ea5-e7fa-43ce-8f11-7258079b26f5",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=32-"
+              },
+              {
+                "key": "If-Range",
+                "value": "{{sdkEtag}}"
+              }
+            ],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{sdkResume}}",
+              "host": [
+                "{{sdkBaseUrl}}{{sdkResume}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:07:07.000Z",
+          "updatedAt": "2026-11-08T09:07:07.000Z",
+          "uid": "41970206-338c9ea5-e7fa-43ce-8f11-7258079b26f5"
+        },
+        {
+          "name": "SDK — chemin fournisseur réellement exercé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"SDK — chemin fournisseur réellement exercé / contrat 1\", () => { pm.expect(result.streamCalls).to.eql(1); pm.expect(result.cdnCalls).to.be.at.least(4); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "9304c655-f532-4898-b150-3a7b9cd3307a",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}/__sdk_fixture/status",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "__sdk_fixture",
+                "status"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T09:07:15.000Z",
+          "updatedAt": "2026-11-08T09:07:15.000Z",
+          "uid": "41970206-9304c655-f532-4898-b150-3a7b9cd3307a"
+        }
+      ],
+      "id": "32e3b00e-4b50-4fce-9e19-c498403fe0f1",
+      "createdAt": "2026-11-08T09:02:20.000Z",
+      "updatedAt": "2026-11-08T09:07:15.000Z",
+      "uid": "41970206-32e3b00e-4b50-4fce-9e19-c498403fe0f1"
+    },
+    {
+      "name": "Audit complet — contrats, compatibilité et état local",
+      "item": [
+        {
+          "name": "Audit — inventaire OpenAPI",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — inventaire OpenAPI / contrat 1\",()=>{const operations=Object.values(result.paths).flatMap(x=>Object.entries(x).filter(([m,v])=>[\"get\",\"post\",\"put\",\"patch\",\"delete\"].includes(m)).map(([m,v])=>v.operationId)); pm.expect(operations.length).to.be.at.least(134); pm.expect(new Set(operations).size).to.eql(operations.length);});",
+                  "pm.test(\"Audit — inventaire OpenAPI / contrat 2\",()=>{pm.collectionVariables.set(\"auditTitleId\",\"api-audit-\"+Date.now());});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b306616d-6c05-4dce-81b5-bd10517c802f",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/openapi.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:56:45.000Z",
+          "updatedAt": "2026-11-08T10:56:45.000Z",
+          "uid": "41970206-b306616d-6c05-4dce-81b5-bd10517c802f"
+        },
+        {
+          "name": "Audit — genre Action réellement filtré",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — genre Action réellement filtré / contrat 1\",()=>{pm.expect(result.data.items.length).to.be.above(0); pm.expect(result.data.source).to.eql(\"web-bff-native-genre\");});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b5b04c9d-ee05-4ead-8b60-329da2ffa6b0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/genres/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "genres",
+                "action"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:56:50.000Z",
+          "updatedAt": "2026-11-08T10:56:50.000Z",
+          "uid": "41970206-b5b04c9d-ee05-4ead-8b60-329da2ffa6b0"
+        },
+        {
+          "name": "Audit — suggestions historiques",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — suggestions historiques / contrat 1\",()=>{pm.expect(result.code).to.eql(0); pm.expect(result.data.length).to.be.above(0);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a566dc2b-85eb-4f32-a04d-64578795ff56",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/search-suggestions?q=Avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "search-suggestions"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Avatar"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:56:55.000Z",
+          "updatedAt": "2026-11-08T10:56:55.000Z",
+          "uid": "41970206-a566dc2b-85eb-4f32-a04d-64578795ff56"
+        },
+        {
+          "name": "Audit — commentaires historiques",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — commentaires historiques / contrat 1\",()=>{pm.expect(result.code).to.eql(0); pm.expect(result.data.items.length).to.be.above(0);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "21bf0c3a-d884-4d59-9755-c34d98e30470",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/post/list/8906247916759695608",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "post",
+                "list",
+                "8906247916759695608"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:01.000Z",
+          "updatedAt": "2026-11-08T10:57:01.000Z",
+          "uid": "41970206-21bf0c3a-d884-4d59-9755-c34d98e30470"
+        },
+        {
+          "name": "Audit — sous-titres de film en coordonnées zéro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — sous-titres de film en coordonnées zéro / contrat 1\",()=>{pm.expect(result.data.items.length).to.be.above(0); pm.expect(result.data.season).to.eql(0); pm.expect(result.data.episode).to.eql(0);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "82dc370f-23ea-4510-aa98-c19e63aef7ec",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cinekivu/titles/8906247916759695608/subtitles?subject_type=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cinekivu",
+                "titles",
+                "8906247916759695608",
+                "subtitles"
+              ],
+              "query": [
+                {
+                  "key": "subject_type",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:06.000Z",
+          "updatedAt": "2026-11-08T10:57:06.000Z",
+          "uid": "41970206-82dc370f-23ea-4510-aa98-c19e63aef7ec"
+        },
+        {
+          "name": "Audit — ancienne lecture avec relais vérifié",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — ancienne lecture avec relais vérifié / contrat 1\",()=>{pm.expect(result.url).to.match(/^\\/api\\//); pm.expect(result.cookie).to.eql(null); pm.expect(result.headers).to.eql({});});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "59002551-13d1-4f38-b79f-0a3804a99f93",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stream/8906247916759695608?quality=720p",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stream",
+                "8906247916759695608"
+              ],
+              "query": [
+                {
+                  "key": "quality",
+                  "value": "720p"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:10.000Z",
+          "updatedAt": "2026-11-08T10:57:10.000Z",
+          "uid": "41970206-59002551-13d1-4f38-b79f-0a3804a99f93"
+        },
+        {
+          "name": "Audit — ancien téléchargement dans le serveur de test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 206\",()=>pm.response.to.have.status(206));",
+                  "pm.test(\"Audit — ancien téléchargement dans le serveur de test / contrat 1\",()=>{pm.expect(pm.response.text().length).to.eql(32); pm.expect(pm.response.text().slice(4,8)).to.eql(\"ftyp\"); pm.expect(pm.response.headers.get(\"content-disposition\")).to.include(\"Audit\");});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "73016646-d19c-4164-b27c-6eb9862df6ff",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=0-31"
+              }
+            ],
+            "url": {
+              "raw": "{{sdkBaseUrl}}/download/fixture-old?quality=720p&title=Audit",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "download",
+                "fixture-old"
+              ],
+              "query": [
+                {
+                  "key": "quality",
+                  "value": "720p"
+                },
+                {
+                  "key": "title",
+                  "value": "Audit"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:15.000Z",
+          "updatedAt": "2026-11-08T10:57:15.000Z",
+          "uid": "41970206-73016646-d19c-4164-b27c-6eb9862df6ff"
+        },
+        {
+          "name": "Audit — OTP vide ne part pas au fournisseur",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\",()=>pm.response.to.have.status(422));",
+                  "const result=pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b224a36a-0c49-486e-bb3e-15ac62d127a3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"account\":\"\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/request-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "request-otp"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:19.000Z",
+          "updatedAt": "2026-11-08T10:57:19.000Z",
+          "uid": "41970206-b224a36a-0c49-486e-bb3e-15ac62d127a3"
+        },
+        {
+          "name": "Audit — connexion vide rejetée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\",()=>pm.response.to.have.status(422));",
+                  "const result=pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "e83ab3fa-eb0f-4d7d-918b-b955684afeb9",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"account\":\"test@example.invalid\",\"password\":\"\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:25.000Z",
+          "updatedAt": "2026-11-08T10:57:25.000Z",
+          "uid": "41970206-e83ab3fa-eb0f-4d7d-918b-b955684afeb9"
+        },
+        {
+          "name": "Audit — inscription incomplète rejetée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\",()=>pm.response.to.have.status(422));",
+                  "const result=pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "1ab13c81-9686-49aa-8b2e-87883c787894",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"account\":\"test@example.invalid\",\"password\":\"test\",\"otp\":\"\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "register"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:31.000Z",
+          "updatedAt": "2026-11-08T10:57:31.000Z",
+          "uid": "41970206-1ab13c81-9686-49aa-8b2e-87883c787894"
+        },
+        {
+          "name": "Audit — historique cloud sans identifiant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\",()=>pm.response.to.have.status(422));",
+                  "const result=pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "cb48880d-37b1-4828-bfa2-056454d408f5",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/history/seen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "history",
+                "seen"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:36.000Z",
+          "updatedAt": "2026-11-08T10:57:36.000Z",
+          "uid": "41970206-cb48880d-37b1-4828-bfa2-056454d408f5"
+        },
+        {
+          "name": "Audit — position cloud négative",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 422\",()=>pm.response.to.have.status(422));",
+                  "const result=pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "03c39ecb-9b15-4eb9-bf46-ae7511aa6f60",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/history/position?subject_id=123&resource_id=r1&position=-1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "history",
+                "position"
+              ],
+              "query": [
+                {
+                  "key": "subject_id",
+                  "value": "123"
+                },
+                {
+                  "key": "resource_id",
+                  "value": "r1"
+                },
+                {
+                  "key": "position",
+                  "value": "-1"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:41.000Z",
+          "updatedAt": "2026-11-08T10:57:41.000Z",
+          "uid": "41970206-03c39ecb-9b15-4eb9-bf46-ae7511aa6f60"
+        },
+        {
+          "name": "Audit — communauté ou indisponibilité explicite",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — communauté ou indisponibilité explicite / contrat 1\",()=>{pm.expect([200,503]).to.include(pm.response.code); if(pm.response.code===200){pm.expect(result.code).to.eql(0);}else{pm.expect(result.detail).to.include(\"communautaire\");}});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "c94692f6-1c42-4c35-b94e-caad4778e834",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/groups/interactive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "groups",
+                "interactive"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:46.000Z",
+          "updatedAt": "2026-11-08T10:57:46.000Z",
+          "uid": "41970206-c94692f6-1c42-4c35-b94e-caad4778e834"
+        },
+        {
+          "name": "Audit — ajouter un favori de test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — ajouter un favori de test / contrat 1\",()=>{pm.expect(result.data.saved).to.eql(true);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "62795e74-9476-4409-abd4-88e8709addc4",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"CineKivu API audit\",\"subject_type\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/library/{{auditTitleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "library",
+                "{{auditTitleId}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:52.000Z",
+          "updatedAt": "2026-11-08T10:57:52.000Z",
+          "uid": "41970206-62795e74-9476-4409-abd4-88e8709addc4"
+        },
+        {
+          "name": "Audit — lire son favori de test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — lire son favori de test / contrat 1\",()=>{pm.expect(result.data.items.some(x=>x.subjectId===pm.collectionVariables.get(\"auditTitleId\"))).to.eql(true);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "551c6a30-32f9-40eb-ba12-c4903f525618",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/library",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "library"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:57:57.000Z",
+          "updatedAt": "2026-11-08T10:57:57.000Z",
+          "uid": "41970206-551c6a30-32f9-40eb-ba12-c4903f525618"
+        },
+        {
+          "name": "Audit — enregistrer une progression locale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — enregistrer une progression locale / contrat 1\",()=>{pm.expect(result.data.saved).to.eql(true); pm.expect(result.data.position_seconds).to.eql(90);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "4f42e9d1-f5ab-400f-ac5a-4c28f87a6bb2",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"CineKivu API audit\",\"subject_type\":1,\"season\":1,\"episode\":1,\"position_seconds\":90,\"duration_seconds\":180}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/progress/{{auditTitleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "progress",
+                "{{auditTitleId}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:03.000Z",
+          "updatedAt": "2026-11-08T10:58:03.000Z",
+          "uid": "41970206-4f42e9d1-f5ab-400f-ac5a-4c28f87a6bb2"
+        },
+        {
+          "name": "Audit — relire la progression",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — relire la progression / contrat 1\",()=>{pm.expect(result.data.position_seconds).to.eql(90); pm.expect(result.data.duration_seconds).to.eql(180);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "97c1a382-c6b8-4a09-aeca-4da34678b241",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/progress/{{auditTitleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "progress",
+                "{{auditTitleId}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:09.000Z",
+          "updatedAt": "2026-11-08T10:58:09.000Z",
+          "uid": "41970206-97c1a382-c6b8-4a09-aeca-4da34678b241"
+        },
+        {
+          "name": "Audit — continuer à regarder",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — continuer à regarder / contrat 1\",()=>{const item=result.data.items.find(x=>x.subject_id===pm.collectionVariables.get(\"auditTitleId\")); pm.expect(item).to.be.an(\"object\"); pm.expect(item.progress_ratio).to.eql(0.5);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "6c0d2442-a309-450e-b652-49659f33a6c5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/continue-watching",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "continue-watching"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:16.000Z",
+          "updatedAt": "2026-11-08T10:58:16.000Z",
+          "uid": "41970206-6c0d2442-a309-450e-b652-49659f33a6c5"
+        },
+        {
+          "name": "Audit — historique local",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — historique local / contrat 1\",()=>{pm.expect(result.data.items.some(x=>x.subject_id===pm.collectionVariables.get(\"auditTitleId\"))).to.eql(true);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "39a492e3-c66c-4a14-bb10-3d682759bfbe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:28.000Z",
+          "updatedAt": "2026-11-08T10:58:28.000Z",
+          "uid": "41970206-39a492e3-c66c-4a14-bb10-3d682759bfbe"
+        },
+        {
+          "name": "Audit — effacer la progression de test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — effacer la progression de test / contrat 1\",()=>{pm.expect(result.data.deleted).to.eql(true);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a30dccac-11a1-4039-b892-5780b9b1b047",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/progress/{{auditTitleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "progress",
+                "{{auditTitleId}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:38.000Z",
+          "updatedAt": "2026-11-08T10:58:38.000Z",
+          "uid": "41970206-a30dccac-11a1-4039-b892-5780b9b1b047"
+        },
+        {
+          "name": "Audit — retirer le favori de test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — retirer le favori de test / contrat 1\",()=>{pm.expect(result.data.saved).to.eql(false);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "1f817843-e52e-40b3-9d7e-1062b28776c7",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/library/{{auditTitleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "library",
+                "{{auditTitleId}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:44.000Z",
+          "updatedAt": "2026-11-08T10:58:44.000Z",
+          "uid": "41970206-1f817843-e52e-40b3-9d7e-1062b28776c7"
+        },
+        {
+          "name": "Audit — vérifier le nettoyage du favori",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — vérifier le nettoyage du favori / contrat 1\",()=>{pm.expect(result.data.items.some(x=>x.subjectId===pm.collectionVariables.get(\"auditTitleId\"))).to.eql(false);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f52a1f45-03ed-423f-bc5e-f6427d5831fa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/library",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "library"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:48.000Z",
+          "updatedAt": "2026-11-08T10:58:48.000Z",
+          "uid": "41970206-f52a1f45-03ed-423f-bc5e-f6427d5831fa"
+        },
+        {
+          "name": "Audit — vérifier le nettoyage de progression",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — vérifier le nettoyage de progression / contrat 1\",()=>{pm.expect(result.data).to.eql(null);});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "ef3083de-2d4f-4106-837f-398949cd9891",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/progress/{{auditTitleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "progress",
+                "{{auditTitleId}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:53.000Z",
+          "updatedAt": "2026-11-08T10:58:53.000Z",
+          "uid": "41970206-ef3083de-2d4f-4106-837f-398949cd9891"
+        },
+        {
+          "name": "Audit — mémoriser la préférence initiale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — mémoriser la préférence initiale / contrat 1\",()=>{pm.collectionVariables.set(\"auditOldAutoplay\",JSON.stringify(result.data.autoplay)); pm.collectionVariables.set(\"auditNextAutoplay\",JSON.stringify(!result.data.autoplay)); pm.expect(result.data.autoplay).to.be.a(\"boolean\");});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a1b8c46e-ea7a-4e5c-af81-8abb2be2c158",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preferences"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:58:58.000Z",
+          "updatedAt": "2026-11-08T10:58:58.000Z",
+          "uid": "41970206-a1b8c46e-ea7a-4e5c-af81-8abb2be2c158"
+        },
+        {
+          "name": "Audit — modifier sa préférence isolée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — modifier sa préférence isolée / contrat 1\",()=>{pm.expect(result.data.autoplay).to.eql(JSON.parse(pm.collectionVariables.get(\"auditNextAutoplay\")));});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "871487b0-1cc1-48b7-a86f-b86a4bfc7839",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"autoplay\":{{auditNextAutoplay}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preferences"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:59:04.000Z",
+          "updatedAt": "2026-11-08T10:59:04.000Z",
+          "uid": "41970206-871487b0-1cc1-48b7-a86f-b86a4bfc7839"
+        },
+        {
+          "name": "Audit — relire sa préférence",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — relire sa préférence / contrat 1\",()=>{pm.expect(result.data.autoplay).to.eql(JSON.parse(pm.collectionVariables.get(\"auditNextAutoplay\")));});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "ec91bbc1-ca91-485e-b2bf-9feedc394879",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preferences"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:59:10.000Z",
+          "updatedAt": "2026-11-08T10:59:10.000Z",
+          "uid": "41970206-ec91bbc1-ca91-485e-b2bf-9feedc394879"
+        },
+        {
+          "name": "Audit — restaurer sa préférence initiale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
+                  "const result=pm.response.json();",
+                  "pm.test(\"Audit — restaurer sa préférence initiale / contrat 1\",()=>{pm.expect(result.data.autoplay).to.eql(JSON.parse(pm.collectionVariables.get(\"auditOldAutoplay\")));});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "d142d199-f899-441f-b9bb-043c473f18f9",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"autoplay\":{{auditOldAutoplay}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preferences"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:59:16.000Z",
+          "updatedAt": "2026-11-08T10:59:16.000Z",
+          "uid": "41970206-d142d199-f899-441f-b9bb-043c473f18f9"
+        },
+        {
+          "name": "Audit — lancement de processus désactivé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 410\",()=>pm.response.to.have.status(410));",
+                  "const result=pm.response.json();"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "9e82a2b0-8157-4005-83f2-f36e6d9f6197",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/launch-player",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "launch-player"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T10:59:21.000Z",
+          "updatedAt": "2026-11-08T10:59:21.000Z",
+          "uid": "41970206-9e82a2b0-8157-4005-83f2-f36e6d9f6197"
+        },
+        {
+          "name": "Sous-titres — source déclarée et fichier absent simulé",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().data.items;",
+                  "pm.test(\"Langues déclarées conservées\", () => pm.expect(items.map(x=>x.lang)).to.eql([\"fr\",\"en\"]));",
+                  "pm.collectionVariables.set(\"missingCaptionPath\", items[0].url);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f7ddd1d0-5b78-47b9-bdab-c39d57e54ae8",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}/api/v1/cinekivu/titles/fixture-caption-missing/subtitles?subject_type=1",
+              "host": [
+                "{{sdkBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cinekivu",
+                "titles",
+                "fixture-caption-missing",
+                "subtitles"
+              ],
+              "query": [
+                {
+                  "key": "subject_type",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T11:05:30.000Z",
+          "updatedAt": "2026-11-08T11:05:30.000Z",
+          "uid": "41970206-f7ddd1d0-5b78-47b9-bdab-c39d57e54ae8"
+        },
+        {
+          "name": "Sous-titres — absence fournisseur explicite et URL protégée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Fichier manquant : HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Absence fournisseur explicite\", () => pm.expect(pm.response.json().detail).to.eql(\"Fichier de sous-titres absent chez le fournisseur\"));",
+                  "pm.test(\"Origine privée non exposée\", () => pm.expect(pm.response.text()).not.to.include(\"__sdk_fixture\"));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "1575e114-afc1-4596-af5e-e98eefc8df50",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sdkBaseUrl}}{{missingCaptionPath}}",
+              "host": [
+                "{{sdkBaseUrl}}{{missingCaptionPath}}"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T11:05:35.000Z",
+          "updatedAt": "2026-11-08T11:05:35.000Z",
+          "uid": "41970206-1575e114-afc1-4596-af5e-e98eefc8df50"
+        },
+        {
+          "name": "Communautés recommandées — liste native restaurée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Communautés natives non vides\", () => { const d=pm.response.json(); pm.expect(d.code).to.eql(0); pm.expect(d.source).to.eql(\"native-trending-communities\"); pm.expect(d.data.length).to.be.above(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "39c60f34-0a9c-4a80-8f00-83085753016d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/recommend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "recommend"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T11:12:40.000Z",
+          "updatedAt": "2026-11-08T11:17:46.000Z",
+          "uid": "41970206-39c60f34-0a9c-4a80-8f00-83085753016d"
+        },
+        {
+          "name": "Groupes tendance — réponse métier contrôlée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP explicite\", () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "pm.test(\"Aucun faux succès\", () => { const d=pm.response.json(); if(pm.response.code===200) pm.expect(d.code).to.eql(0); else pm.expect(d.detail).to.include(\"fournisseur\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "4ff086b5-82a4-4005-919d-a9bb0c72101b",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/groups/trending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "groups",
+                "trending"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T11:12:46.000Z",
+          "updatedAt": "2026-11-08T11:12:46.000Z",
+          "uid": "41970206-4ff086b5-82a4-4005-919d-a9bb0c72101b"
+        },
+        {
+          "name": "Communauté réelle — fiche native restaurée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Identifiant du groupe réel\", () => pm.expect(pm.response.json().data.id).to.eql(\"4091904799015420984\"));",
+                  "pm.test(\"Nom du groupe réel\", () => pm.expect(pm.response.json().data.name).to.be.a(\"string\").and.not.to.eql(\"Community Room\"));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "7f12e2c9-be73-4b51-9857-66e8f989a085",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/4091904799015420984",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "4091904799015420984"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-08T11:14:08.000Z",
+          "updatedAt": "2026-11-08T11:14:08.000Z",
+          "uid": "41970206-7f12e2c9-be73-4b51-9857-66e8f989a085"
+        }
+      ],
+      "id": "a28aa0a2-9f38-4097-89d0-9c529a344135",
+      "createdAt": "2026-11-08T10:55:16.000Z",
+      "updatedAt": "2026-11-08T11:14:08.000Z",
+      "uid": "41970206-a28aa0a2-9f38-4097-89d0-9c529a344135"
+    },
+    {
+      "name": "Santé",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "5d240e81-c581-4da3-9e60-9f035949c581",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-5d240e81-c581-4da3-9e60-9f035949c581"
+    },
+    {
+      "name": "Santé des lecteurs",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "a77851e8-2ef9-408c-a7e6-f8fe602a35fd",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "health"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-a77851e8-2ef9-408c-a7e6-f8fe602a35fd"
+    },
+    {
+      "name": "Santé CineKivu",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "02f4e6e9-61fe-4b76-9403-53f344d4508d",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "health"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-02f4e6e9-61fe-4b76-9403-53f344d4508d"
+    },
+    {
+      "name": "Documentation OpenAPI",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "aa096b38-a6a1-4277-bb98-5c0cd1c4defa",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/openapi.json",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "openapi.json"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-aa096b38-a6a1-4277-bb98-5c0cd1c4defa"
+    },
+    {
+      "name": "Autocomplete vide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "e3adf5ef-d9c1-44ae-b9fb-563875fcd646",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/search/autocomplete?q=",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "search",
+            "autocomplete"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-e3adf5ef-d9c1-44ae-b9fb-563875fcd646"
+    },
+    {
+      "name": "Saison invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "65a610c4-0769-4850-99d7-4676efd73bcb",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/example/streams?season=0",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "example",
+            "streams"
+          ],
+          "query": [
+            {
+              "key": "season",
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-65a610c4-0769-4850-99d7-4676efd73bcb"
+    },
+    {
+      "name": "Épisode invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "4a7f1d26-306b-47ea-8544-c6836d69bcbe",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/example/streams?episode=0",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "example",
+            "streams"
+          ],
+          "query": [
+            {
+              "key": "episode",
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-4a7f1d26-306b-47ea-8544-c6836d69bcbe"
+    },
+    {
+      "name": "Qualité invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "56fdbbad-589a-4b52-923c-d5daf9d1a728",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/example/streams?quality=INVALID",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "example",
+            "streams"
+          ],
+          "query": [
+            {
+              "key": "quality",
+              "value": "INVALID"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-56fdbbad-589a-4b52-923c-d5daf9d1a728"
+    },
+    {
+      "name": "Type de sujet invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "cd96627a-da9f-4a40-b942-4d2ac0fdccd1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/example/streams?subject_type=99",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "example",
+            "streams"
+          ],
+          "query": [
+            {
+              "key": "subject_type",
+              "value": "99"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-cd96627a-da9f-4a40-b942-4d2ac0fdccd1"
+    },
+    {
+      "name": "Jeton de lecture inconnu",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", function(){ pm.response.to.have.status(404); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "c01afa32-5752-4cad-90e7-2c2612a21da1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/play/invalid_token_123",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "play",
+            "invalid_token_123"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-c01afa32-5752-4cad-90e7-2c2612a21da1"
+    },
+    {
+      "name": "Manifeste HLS inconnu",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", function(){ pm.response.to.have.status(404); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "73cb8a5e-9903-420f-b636-8db1a61e942f",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/adaptive/invalid_token_123/master.m3u8",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "adaptive",
+            "invalid_token_123",
+            "master.m3u8"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-73cb8a5e-9903-420f-b636-8db1a61e942f"
+    },
+    {
+      "name": "Genre invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "4bef05a1-3c21-4af0-92a6-e39dac9d712e",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/web/filter/options?category=invalid",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "web",
+            "filter",
+            "options"
+          ],
+          "query": [
+            {
+              "key": "category",
+              "value": "invalid"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-4bef05a1-3c21-4af0-92a6-e39dac9d712e"
+    },
+    {
+      "name": "Identifiant de fiche invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "828fe455-d4c2-43bc-bcf0-345dde1740ed",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/media/invalid%21id/overview",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "media",
+            "invalid%21id",
+            "overview"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-828fe455-d4c2-43bc-bcf0-345dde1740ed"
+    },
+    {
+      "name": "Page 0 filtre invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "8cf1f64a-771e-4df3-b0aa-676a3ad8d08c",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"movies\",\"page\":0}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/web/filter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "web",
+            "filter"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-8cf1f64a-771e-4df3-b0aa-676a3ad8d08c"
+    },
+    {
+      "name": "Feedback invalide",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422\", function(){ pm.response.to.have.status(422); });",
+              "pm.test(\"Réponse non vide\", function(){ pm.expect(pm.response.text().length).to.be.above(0); });"
+            ]
+          }
+        }
+      ],
+      "id": "32aa0663-2bb8-40e1-a8cd-2420e6094104",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"subject_id\":\"!\",\"rating\":1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/web/feedback",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "web",
+            "feedback"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-06T22:31:13.000Z",
+      "updatedAt": "2026-11-06T22:31:13.000Z",
+      "uid": "41970206-32aa0663-2bb8-40e1-a8cd-2420e6094104"
+    },
+    {
+      "name": "Audio — versions linguistiques de la série",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Audio / HTTP 200',()=>pm.response.to.have.status(200));",
+              "const result=pm.response.json();",
+              "pm.test('Audio / réponse métier valide',()=>pm.expect(result.code).to.eql(0));",
+              "pm.test('Audio / éditions identifiées et sans promesse de piste vérifiée',()=>{pm.expect(result.data.items).to.be.an('array').that.is.not.empty;result.data.items.forEach(e=>{pm.expect(String(e.subjectId||e.id)).to.match(/^[a-zA-Z0-9_-]{1,80}$/);pm.expect(e.language).to.be.a('string');pm.expect(e.audioVerified).to.eql(false);});});",
+              "pm.test('Audio / identifiants distincts',()=>{const ids=result.data.items.map(e=>String(e.subjectId||e.id));pm.expect(new Set(ids).size).to.eql(ids.length);});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "id": "245b2eab-cc3d-46e8-9ce6-210fc07ceb79",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/4013029447980015128/editions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "4013029447980015128",
+            "editions"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-08T15:22:53.000Z",
+      "updatedAt": "2026-11-08T15:22:53.000Z",
+      "uid": "41970206-245b2eab-cc3d-46e8-9ce6-210fc07ceb79"
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "sdkBaseUrl",
+      "value": "http://127.0.0.1:8001"
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import json
 import re
 import time
 import httpx
+from cinekivu_text import synopsis
 
 UPSTREAM_SITE = "https://movieboxhd.net"
 UPSTREAM_API = "https://h5-api.aoneroom.com/wefeed-h5api-bff"
@@ -94,6 +95,7 @@ def parse_public_detail(html: str) -> dict:
     return {
         "subjectId": str(field(payload, subject, "subjectId", "")),
         "title": field(payload, subject, "title", ""),
+        "description": synopsis(*(field(payload, subject, key) for key in ('description', 'synopsis', 'overview', 'desc', 'introduction'))),
         "rating": {
             "value": number(field(payload, subject, "imdbRatingValue"), float),
             "count": number(field(payload, subject, "imdbRatingCount"), int),

@@ -314,6 +314,19 @@ def live_title(subject_id: str) -> dict | None:
         return normalize_title(cine.engine.get_details(valid_id(subject_id)))
     except Exception:
         pass
+    # Search in the home page cache (featured + all sections).
+    try:
+        home_data = normalize_home(upstream('GET', '/home', params={'host': 'movieboxhd.net'}))
+        feat = home_data.get('featured')
+        if isinstance(feat, dict) and str(feat.get('subjectId')) == str(subject_id):
+            return feat
+        for section in home_data.get('sections', []):
+            for entry in section.get('items', []):
+                if isinstance(entry, dict) and str(entry.get('subjectId')) == str(subject_id):
+                    return entry
+    except Exception:
+        pass
+    # Search in detail-rec (related items).
     try:
         recs = upstream('GET', '/subject/detail-rec', params={'subjectId': valid_id(subject_id)})
         items = (recs.get('data', {}) or {}).get('items', []) if isinstance(recs, dict) else []

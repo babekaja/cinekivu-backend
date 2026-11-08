@@ -181,19 +181,22 @@ class MovieBoxContent:
 
     # --- Live & Community (Rooms) ---
     def get_rooms(self, page: int = 1) -> Dict:
-        """Fetches recommended communities/rooms."""
+        """Fetch public communities from the current native trending entrance."""
+        # This entrance returns the whole selection, without a next-page cursor.
+        if page > 1:
+            return {'code': 0, 'data': {'items': []}}
         return self.client.request(
-            "GET",
-            "/wefeed-mobile-bff/room-api/recommend",
-            params={"page": page, "pageSize": 20}
+            "POST",
+            "/wefeed-mobile-bff/group/list/trending-entrance",
+            data={}
         )
 
     def get_room_detail(self, room_id: str) -> Dict:
         """Fetches details for a specific room."""
         return self.client.request(
-            "POST",
-            "/wefeed-mobile-bff/room-api/get",
-            data={"groupId": str(room_id)}
+            "GET",
+            "/wefeed-mobile-bff/group/get",
+            params={"groupId": str(room_id)}
         )
 
     def get_room_posts(self, room_id: str, page: int = 1) -> Dict:

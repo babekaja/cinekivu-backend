@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-15",
+  "total_oeuvres": 601,
+  "fiches_moviebox_source_v4": 596,
+  "editions_source_v4": 610,
+  "genres_taxonomie": 44,
+  "categories_taxonomie": 12,
+  "formats_taxonomie": 68,
+  "oeuvres_par_categorie": {
+    "series": 266,
+    "animation": 66,
+    "films": 257,
+    "animes": 29,
+    "courts_formats": 10,
+    "mangas_bd": 14
+  },
+  "genres_renseignes": 50,
+  "annee_renseignee": 55,
+  "audio_verifie": 0,
+  "sous_titres_verifies": 0,
+  "diffusion_autorisee_verifiee": 0,
+  "titres_manga_amorces_non_verifies_moviebox": 14,
+  "genres_non_normalises_dans_donnees_v4": {},
+  "notes": [
+    "Catégories et genres couverts même lorsque leur collection est vide.",
+    "Aucun nouveau titre n’est inventé.",
+    "Les champs de langue disponibles ne prouvent ni audio ni sous-titre."
+  ]
+}

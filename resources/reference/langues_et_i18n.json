@@ -1,0 +1,261 @@
+{
+  "langues": [
+    {
+      "code": "fr",
+      "nom": "Français",
+      "iso639_3": "fra",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "en",
+      "nom": "English",
+      "iso639_3": "eng",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "sw",
+      "nom": "Kiswahili",
+      "iso639_3": "swa",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "ja",
+      "nom": "日本語",
+      "iso639_3": "jpn",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "ko",
+      "nom": "한국어",
+      "iso639_3": "kor",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "hi",
+      "nom": "हिन्दी",
+      "iso639_3": "hin",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "fil",
+      "nom": "Filipino",
+      "iso639_3": "fil",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "ar",
+      "nom": "العربية",
+      "iso639_3": "ara",
+      "direction_interface": "rtl"
+    },
+    {
+      "code": "pt",
+      "nom": "Português",
+      "iso639_3": "por",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "es",
+      "nom": "Español",
+      "iso639_3": "spa",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "de",
+      "nom": "Deutsch",
+      "iso639_3": "deu",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "id",
+      "nom": "Bahasa Indonesia",
+      "iso639_3": "ind",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "zh",
+      "nom": "中文",
+      "iso639_3": "zho",
+      "direction_interface": "ltr"
+    },
+    {
+      "code": "ur",
+      "nom": "اردو",
+      "iso639_3": "urd",
+      "direction_interface": "rtl"
+    }
+  ],
+  "profils_preferences": {
+    "fr-CD": {
+      "interface": [
+        "fr-CD",
+        "fr",
+        "en"
+      ],
+      "metadata": [
+        "fr-CD",
+        "fr",
+        "en"
+      ],
+      "audio_preference": [
+        "fr",
+        "en",
+        "ja"
+      ],
+      "subtitle_preference": [
+        "fr",
+        "sw",
+        "en"
+      ],
+      "country": "CD"
+    },
+    "sw-CD": {
+      "interface": [
+        "sw-CD",
+        "sw",
+        "fr",
+        "en"
+      ],
+      "metadata": [
+        "sw",
+        "fr",
+        "en"
+      ],
+      "audio_preference": [
+        "sw",
+        "fr",
+        "en",
+        "ja"
+      ],
+      "subtitle_preference": [
+        "sw",
+        "fr",
+        "en"
+      ],
+      "country": "CD"
+    },
+    "en-US": {
+      "interface": [
+        "en-US",
+        "en"
+      ],
+      "metadata": [
+        "en"
+      ],
+      "audio_preference": [
+        "en",
+        "ja"
+      ],
+      "subtitle_preference": [
+        "en"
+      ],
+      "country": "US"
+    },
+    "ja-JP": {
+      "interface": [
+        "ja-JP",
+        "ja",
+        "en"
+      ],
+      "metadata": [
+        "ja",
+        "en"
+      ],
+      "audio_preference": [
+        "ja"
+      ],
+      "subtitle_preference": [
+        "ja",
+        "en"
+      ],
+      "country": "JP"
+    },
+    "fr-FR": {
+      "interface": [
+        "fr-FR",
+        "fr",
+        "en"
+      ],
+      "metadata": [
+        "fr",
+        "en"
+      ],
+      "audio_preference": [
+        "fr",
+        "ja"
+      ],
+      "subtitle_preference": [
+        "fr"
+      ],
+      "country": "FR"
+    }
+  },
+  "traductions_ui": {
+    "fr": {
+      "app_name": "Bibliothèque audiovisuelle",
+      "films": "Films",
+      "series": "Séries",
+      "anime": "Animés",
+      "manga": "Mangas",
+      "chapters": "Chapitres",
+      "seasons": "Saisons",
+      "episodes": "Épisodes",
+      "subtitle": "Sous-titres",
+      "dub": "Doublage",
+      "read": "Lire",
+      "watch": "Regarder",
+      "unknown": "Non vérifié",
+      "no_license": "Contenu indisponible sans autorisation"
+    },
+    "en": {
+      "app_name": "Media Library",
+      "films": "Movies",
+      "series": "TV Shows",
+      "anime": "Anime",
+      "manga": "Manga",
+      "chapters": "Chapters",
+      "seasons": "Seasons",
+      "episodes": "Episodes",
+      "subtitle": "Subtitles",
+      "dub": "Dubbing",
+      "read": "Read",
+      "watch": "Watch",
+      "unknown": "Unverified",
+      "no_license": "Content unavailable without permission"
+    },
+    "sw": {
+      "app_name": "Maktaba ya Filamu",
+      "films": "Filamu",
+      "series": "Vipindi",
+      "anime": "Anime",
+      "manga": "Manga",
+      "chapters": "Sura",
+      "seasons": "Misimu",
+      "episodes": "Vipindi",
+      "subtitle": "Manukuu",
+      "dub": "Sauti zilizotafsiriwa",
+      "read": "Soma",
+      "watch": "Tazama",
+      "unknown": "Haijathibitishwa",
+      "no_license": "Maudhui hayapatikani bila ruhusa"
+    },
+    "ja": {
+      "app_name": "メディアライブラリ",
+      "films": "映画",
+      "series": "ドラマ",
+      "anime": "アニメ",
+      "manga": "マンガ",
+      "chapters": "話",
+      "seasons": "シーズン",
+      "episodes": "エピソード",
+      "subtitle": "字幕",
+      "dub": "吹き替え",
+      "read": "読む",
+      "watch": "視聴する",
+      "unknown": "未確認",
+      "no_license": "権利確認が必要です"
+    }
+  },
+  "iso_bcp47_note": "BCP 47 pour interface, ISO 639 pour sous-titres; distinguer traductions de métadonnées et pistes réellement disponibles",
+  "audio_subs_non_inferes": true
+}

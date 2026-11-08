@@ -1,0 +1,540 @@
+{
+  "version": "5.0",
+  "date": "2026-10-15",
+  "base_version": "4.0",
+  "categories": [
+    {
+      "id": "films",
+      "noms": {
+        "fr": "Films",
+        "en": "Movies",
+        "sw": "Filamu"
+      },
+      "description_fr": "Film, long métrage, court métrage, film TV",
+      "formats_admis": [
+        "long_metrage",
+        "court_metrage",
+        "film_tv",
+        "film_animation",
+        "film_anime",
+        "film_documentaire",
+        "film_concert"
+      ],
+      "oeuvres_existantes": 257,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "series",
+      "noms": {
+        "fr": "Séries",
+        "en": "Series",
+        "sw": "Tamthilia"
+      },
+      "description_fr": "Séries, feuilletons, mini-séries, web-séries",
+      "formats_admis": [
+        "serie_tv",
+        "mini_serie",
+        "web_serie",
+        "feuilleton",
+        "serie_courte",
+        "k_drama",
+        "c_drama",
+        "j_drama",
+        "telenovela",
+        "serie_documentaire"
+      ],
+      "oeuvres_existantes": 266,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "animes",
+      "noms": {
+        "fr": "Animés",
+        "en": "Anime",
+        "sw": "Anime"
+      },
+      "description_fr": "Animation japonaise, séries, films, OVA et ONA",
+      "formats_admis": [
+        "anime_tv",
+        "anime_film",
+        "anime_ova",
+        "anime_ona",
+        "anime_special",
+        "anime_music",
+        "anime_pv"
+      ],
+      "oeuvres_existantes": 29,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "animation",
+      "noms": {
+        "fr": "Animation",
+        "en": "Animation",
+        "sw": "Uhuishaji"
+      },
+      "description_fr": "Dessins animés, films animés, donghua",
+      "formats_admis": [
+        "dessin_anime",
+        "serie_animation",
+        "film_animation",
+        "donghua",
+        "stop_motion",
+        "animation_adulte"
+      ],
+      "oeuvres_existantes": 66,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "mangas_bd",
+      "noms": {
+        "fr": "Mangas et BD",
+        "en": "Manga & comics",
+        "sw": "Manga na katuni"
+      },
+      "description_fr": "Manga, manhwa, manhua, webtoon, comics",
+      "formats_admis": [
+        "manga",
+        "manhwa",
+        "manhua",
+        "webtoon",
+        "comics",
+        "roman_graphique",
+        "bande_dessinee"
+      ],
+      "oeuvres_existantes": 14,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "documentaires",
+      "noms": {
+        "fr": "Documentaires",
+        "en": "Documentaries",
+        "sw": "Filamu za nyaraka"
+      },
+      "description_fr": "Films et séries documentaires",
+      "formats_admis": [
+        "film_documentaire",
+        "serie_documentaire",
+        "docu_fiction",
+        "true_crime",
+        "nature",
+        "science",
+        "histoire"
+      ],
+      "oeuvres_existantes": 0,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "emissions_tv",
+      "noms": {
+        "fr": "Émissions TV",
+        "en": "TV shows",
+        "sw": "Vipindi vya TV"
+      },
+      "description_fr": "Téléréalité, talk-shows, concours, jeux télévisés",
+      "formats_admis": [
+        "tele_realite",
+        "talk_show",
+        "jeu_tv",
+        "concours",
+        "actualites",
+        "magazine",
+        "varietes"
+      ],
+      "oeuvres_existantes": 0,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "spectacles",
+      "noms": {
+        "fr": "Spectacles",
+        "en": "Performances",
+        "sw": "Maonyesho"
+      },
+      "description_fr": "Humour, théâtre, spectacles vivants",
+      "formats_admis": [
+        "stand_up",
+        "theatre",
+        "humour",
+        "festival",
+        "danse"
+      ],
+      "oeuvres_existantes": 0,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "musique",
+      "noms": {
+        "fr": "Musique",
+        "en": "Music",
+        "sw": "Muziki"
+      },
+      "description_fr": "Concerts, captations musicales, clips",
+      "formats_admis": [
+        "concert",
+        "clip_musical",
+        "spectacle_musical",
+        "opera",
+        "documentaire_musical"
+      ],
+      "oeuvres_existantes": 0,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "sport",
+      "noms": {
+        "fr": "Sport",
+        "en": "Sports",
+        "sw": "Michezo"
+      },
+      "description_fr": "Reportages sportifs et compétitions diffusables",
+      "formats_admis": [
+        "match",
+        "evenement_sportif",
+        "documentaire_sportif",
+        "resume_sportif"
+      ],
+      "oeuvres_existantes": 0,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "education",
+      "noms": {
+        "fr": "Éducation",
+        "en": "Educational",
+        "sw": "Elimu"
+      },
+      "description_fr": "Programmes éducatifs et scientifiques",
+      "formats_admis": [
+        "cours_video",
+        "tutoriel",
+        "education_enfants",
+        "conference",
+        "documentaire_educatif"
+      ],
+      "oeuvres_existantes": 0,
+      "origine": "taxonomie_editoriale_v5"
+    },
+    {
+      "id": "courts_formats",
+      "noms": {
+        "fr": "Formats courts",
+        "en": "Short form",
+        "sw": "Vipindi vifupi"
+      },
+      "description_fr": "Courts métrages et séries courtes",
+      "formats_admis": [
+        "court_metrage",
+        "serie_courte",
+        "micro_serie",
+        "anime_special",
+        "clip_musical"
+      ],
+      "oeuvres_existantes": 10,
+      "origine": "taxonomie_editoriale_v5"
+    }
+  ],
+  "genres": [
+    {
+      "id": "action",
+      "nom_fr": "Action",
+      "nom_en": "Action",
+      "oeuvres_existantes": 18
+    },
+    {
+      "id": "aventure",
+      "nom_fr": "Aventure",
+      "nom_en": "Adventure",
+      "oeuvres_existantes": 15
+    },
+    {
+      "id": "animation",
+      "nom_fr": "Animation",
+      "nom_en": "Animation",
+      "oeuvres_existantes": 17
+    },
+    {
+      "id": "comedie",
+      "nom_fr": "Comédie",
+      "nom_en": "Comedy",
+      "oeuvres_existantes": 11
+    },
+    {
+      "id": "policier",
+      "nom_fr": "Policier / Crime",
+      "nom_en": "Crime",
+      "oeuvres_existantes": 5
+    },
+    {
+      "id": "documentaire",
+      "nom_fr": "Documentaire",
+      "nom_en": "Documentary",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "drame",
+      "nom_fr": "Drame",
+      "nom_en": "Drama",
+      "oeuvres_existantes": 17
+    },
+    {
+      "id": "famille",
+      "nom_fr": "Famille",
+      "nom_en": "Family",
+      "oeuvres_existantes": 1
+    },
+    {
+      "id": "fantastique",
+      "nom_fr": "Fantastique",
+      "nom_en": "Fantasy",
+      "oeuvres_existantes": 4
+    },
+    {
+      "id": "histoire",
+      "nom_fr": "Histoire",
+      "nom_en": "History",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "horreur",
+      "nom_fr": "Horreur",
+      "nom_en": "Horror",
+      "oeuvres_existantes": 5
+    },
+    {
+      "id": "musical",
+      "nom_fr": "Musical",
+      "nom_en": "Music",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "mystere",
+      "nom_fr": "Mystère",
+      "nom_en": "Mystery",
+      "oeuvres_existantes": 2
+    },
+    {
+      "id": "romance",
+      "nom_fr": "Romance",
+      "nom_en": "Romance",
+      "oeuvres_existantes": 5
+    },
+    {
+      "id": "science_fiction",
+      "nom_fr": "Science-fiction",
+      "nom_en": "Science Fiction",
+      "oeuvres_existantes": 4
+    },
+    {
+      "id": "thriller",
+      "nom_fr": "Thriller",
+      "nom_en": "Thriller",
+      "oeuvres_existantes": 5
+    },
+    {
+      "id": "guerre",
+      "nom_fr": "Guerre",
+      "nom_en": "War",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "western",
+      "nom_fr": "Western",
+      "nom_en": "Western",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "jeunesse",
+      "nom_fr": "Jeunesse",
+      "nom_en": "Kids",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "realite",
+      "nom_fr": "Téléréalité",
+      "nom_en": "Reality",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "actualites",
+      "nom_fr": "Actualités",
+      "nom_en": "News",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "talk",
+      "nom_fr": "Talk-show",
+      "nom_en": "Talk",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "soap",
+      "nom_fr": "Feuilleton",
+      "nom_en": "Soap",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "biographie",
+      "nom_fr": "Biographie",
+      "nom_en": "Biography",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "sport",
+      "nom_fr": "Sport",
+      "nom_en": "Sport",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "arts_martiaux",
+      "nom_fr": "Arts martiaux",
+      "nom_en": "Martial Arts",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "historique",
+      "nom_fr": "Historique",
+      "nom_en": "Historical",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "surnaturel",
+      "nom_fr": "Surnaturel",
+      "nom_en": "Supernatural",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "suspense",
+      "nom_fr": "Suspense",
+      "nom_en": "Suspense",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "psychologique",
+      "nom_fr": "Psychologique",
+      "nom_en": "Psychological",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "tranche_de_vie",
+      "nom_fr": "Tranche de vie",
+      "nom_en": "Slice of Life",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "isekai",
+      "nom_fr": "Isekai",
+      "nom_en": "Isekai",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "mecha",
+      "nom_fr": "Mecha",
+      "nom_en": "Mecha",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "shonen",
+      "nom_fr": "Shōnen",
+      "nom_en": "Shounen",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "shojo",
+      "nom_fr": "Shōjo",
+      "nom_en": "Shoujo",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "seinen",
+      "nom_fr": "Seinen",
+      "nom_en": "Seinen",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "josei",
+      "nom_fr": "Josei",
+      "nom_en": "Josei",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "ecchi",
+      "nom_fr": "Ecchi",
+      "nom_en": "Ecchi",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "sports",
+      "nom_fr": "Sport / Sports",
+      "nom_en": "Sports",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "magie",
+      "nom_fr": "Magie",
+      "nom_en": "Magic",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "cuisine",
+      "nom_fr": "Cuisine",
+      "nom_en": "Gourmet",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "school",
+      "nom_fr": "Milieu scolaire",
+      "nom_en": "School",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "militaire",
+      "nom_fr": "Militaire",
+      "nom_en": "Military",
+      "oeuvres_existantes": 0
+    },
+    {
+      "id": "post_apocalyptique",
+      "nom_fr": "Post-apocalyptique",
+      "nom_en": "Post-Apocalyptic",
+      "oeuvres_existantes": 0
+    }
+  ],
+  "types_sources": [
+    "film",
+    "serie",
+    "anime",
+    "animation",
+    "manga",
+    "manhwa",
+    "manhua"
+  ],
+  "dimensions_filtres": {
+    "categories": "multivalué, une œuvre peut apparaître dans plusieurs univers",
+    "type": "type de l’œuvre conservé de V4, distinct des catégories de navigation",
+    "genres": "genres constatés dans les métadonnées, ne pas confondre avec collection éditoriale",
+    "formats": "type précis, uniquement si identifiable",
+    "rubriques_moviebox": "collections observées, ne prouvent ni genre ni disponibilité",
+    "langue_interface": "fr-CD, sw-CD, en-US… traduction des composants",
+    "langue_titre": "titre localisé avec provenance",
+    "langue_originale": "langue originale confirmée lorsque présente",
+    "langue_audio": "piste effectivement vérifiée, différente d’un suffixe [English]",
+    "langue_sous_titres": "piste effectivement vérifiée",
+    "langue_edition_indiquee": "libellé de page ou d’édition, sans preuve technique",
+    "pays_production": "pays de production sourcé, différent de localisation utilisateur",
+    "territoire_diffusion": "licences territoriales vérifiées",
+    "annee": "année issue d’une fiche et pas déduite du titre",
+    "qualite": "résolution/codec/HDR vérifiés par fichier, non par affiche",
+    "droit_telechargement": "licence distincte du visionnage"
+  },
+  "sources_reference": {
+    "tmdb_films_genres": "https://developer.themoviedb.org/reference/genre-movie-list",
+    "tmdb_series_genres": "https://developer.themoviedb.org/reference/genre-tv-list",
+    "jikan_anime_model": "https://docs.jikan.moe/objects/model/anime/anime/",
+    "mangadex_codes": "https://gitlab.com/mangadex-pub/mangadex-api-docs/blob/main/3-enumerations.md",
+    "bcp47": "https://www.rfc-editor.org/info/rfc5646/",
+    "mangadex_usage": "https://gitlab.com/mangadex-pub/mangadex-api-docs/-/blob/main/index.md"
+  },
+  "regles_donnees": "Ne jamais inventer une saison, langue audio, sous-titre, chapitre ou URL de diffusion."
+}

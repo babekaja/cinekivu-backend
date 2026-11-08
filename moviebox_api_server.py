@@ -7,7 +7,7 @@ import requests
 import urllib.request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uvicorn
 import os
 import subprocess
@@ -59,8 +59,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=sorted(set(_allowed_origins)),
     allow_credentials=True,
+    allow_origin_regex=r"^http://(?:localhost|127\.0\.0\.1)(?::[0-9]{1,5})?$",
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Length", "Content-Range", "Accept-Ranges", "Content-Disposition", "ETag", "Last-Modified"],
 )
 
 def _session_key() -> bytes:
@@ -106,7 +108,15 @@ def _verify_session(cookie: Optional[str]) -> Optional[str]:
 @app.middleware("http")
 async def sticky_anonymous_session(request: Request, call_next):
     """Secure signed browser session ID, persisted across server restarts."""
-    if request.url.path in {"/", "/health", "/openapi.json", "/docs", "/redoc"}:
+    if (request.url.path in {"/", "/health", "/openapi.json", "/docs", "/redoc"}
+            or request.url.path == '/api/v1/recommender'
+            or request.url.path.startswith('/api/v1/recommender/')
+            or request.url.path == '/api/v1/reference'
+            or request.url.path.startswith('/api/v1/reference/')
+            or request.url.path == '/api/v1/enrichment'
+            or request.url.path.startswith('/api/v1/enrichment/')
+            or request.url.path == '/api/v1/downloads'
+            or request.url.path.startswith('/api/v1/downloads/')):
         return await call_next(request)
     signed_cookie = request.cookies.get("session_id")
     sid = _verify_session(signed_cookie)
@@ -189,20 +199,20 @@ def get_session(session_id: Optional[str] = None):
     return sessions[sid]
 
 class LoginRequest(BaseModel):
-    account: str
-    password: str
-    authType: int = 1
+    account: str = Field(pattern=r'^\S{3,254}$')
+    password: str = Field(min_length=1, max_length=1024)
+    authType: int = Field(1, ge=0, le=1)
 
 class RegisterRequest(BaseModel):
-    account: str
-    password: str
-    otp: str
-    authType: int = 1
+    account: str = Field(pattern=r'^\S{3,254}$')
+    password: str = Field(min_length=1, max_length=1024)
+    otp: str = Field(pattern=r'^[A-Za-z0-9]{1,32}$')
+    authType: int = Field(1, ge=0, le=1)
 
 class OtpRequest(BaseModel):
-    account: str
-    authType: int = 1
-    type: int = 1 # 1: Register, 2: Login
+    account: str = Field(pattern=r'^\S{3,254}$')
+    authType: int = Field(1, ge=0, le=1)
+    type: int = Field(1, ge=1, le=3) # Register, login, reset password
 
 @app.post("/request-otp")
 def request_otp(req: OtpRequest, session_id: Optional[str] = Cookie(None)):
@@ -776,10 +786,11 @@ def get_search_suggestions(response: Response, q: Optional[str] = None, session_
     response.set_cookie(key="session_id", value=s["id"], httponly=True, samesite="lax")
     try:
         if q:
-            # If there's a query, use actual search logic for autocomplete suggestions
-            res = s["content"].search(q, page=1)
-            data = res.get("data", {})
-            items = data.get("list") or data.get("items") or data.get("movie") or data.get("subjects") or []
+            from cinekivu_discovery import cine_autocomplete
+            values = cine_autocomplete(q.strip())
+            return {"code": 0, "data": list(dict.fromkeys(
+                row.get('title') or row.get('query') for row in values
+                if row.get('title') or row.get('query')))}
         else:
             res = s["content"].get_search_suggestions()
             logger.info(f"SEARCH SUGGESTIONS RAW: {json.dumps(res)}")
@@ -816,27 +827,27 @@ def search(response: Response, q: str, page: int = 1, subject_type: int = 0, typ
         raise HTTPException(status_code=502, detail=f"MovieBox search unavailable: {e}")
 
 @app.get("/rooms/recommend")
-def get_rooms(page: int = 1, session_id: Optional[str] = Cookie(None)):
+def get_rooms(page: int = Query(1, ge=1, le=200), session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
     try:
-        res = s["content"].get_rooms(page=page)
+        from moviebox_api.ott import _remote
+        res = _remote(s["content"].get_rooms(page=page))
         data = res.get("data") or {}
         items = data.get("list") or data.get("items") or []
-        return {"code": 0, "data": [map_room(r) for r in items]}
+        return {"code": 0, "data": [map_room(r) for r in items], 'source': 'native-trending-communities'}
     except Exception as e:
-        logger.error(f"Rooms error: {e}")
-        return {"code": 1, "data": []}
+        raise HTTPException(503, 'Recommandations de communautés indisponibles chez le fournisseur') from e
 
 @app.get("/rooms/{room_id}")
 def get_room_detail(room_id: str, session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
     try:
-        res = s["content"].get_room_detail(room_id)
+        from moviebox_api.ott import _remote
+        res = _remote(s["content"].get_room_detail(room_id))
         data = res.get("data") or {}
         return {"code": 0, "data": map_room(data)}
     except Exception as e:
-        logger.error(f"Room detail error: {e}")
-        return {"code": 1, "data": {}}
+        raise HTTPException(503, 'Communauté indisponible chez le fournisseur') from e
 
 
 @app.get("/detail/{subject_id}")
@@ -1541,8 +1552,7 @@ def _get_stream_raw(subject_id: str, season: int = 1, episode: int = 1, quality:
 
 # Safe browser-facing form of the historical stream route.
 # Provider tokens, signed cookies and CDN URLs never leave the server.
-@app.get("/stream/{subject_id}")
-def get_stream(subject_id: str, season: int = 1, episode: int = 1,
+def _legacy_verified_stream(subject_id: str, season: int = 1, episode: int = 1,
                quality: Optional[str] = "720p", resource_id: Optional[str] = None,
                session_id: Optional[str] = Cookie(None)):
     from urllib.parse import urlsplit
@@ -1577,107 +1587,88 @@ def get_stream(subject_id: str, season: int = 1, episode: int = 1,
             'streamId': private.get('streamId'), 'season': season, 'episode': episode,
             'source': 'moviebox-internal-verified-relay', 'audioVerified': False}
 
+
+@app.get("/stream/{subject_id}")
+def get_stream(subject_id: str, season: int = Query(1, ge=0, le=999),
+               episode: int = Query(1, ge=0, le=9999),
+               quality: Optional[str] = Query('720p', pattern=r'(?i)^(auto|best|worst|360p|480p|720p|1080p|1440p|2160p)$'),
+               resource_id: Optional[str] = None, session_id: Optional[str] = Cookie(None)):
+    from cinekivu_bridge import valid_id, _register_captions, _remote_error
+    from cinekivu_source import api as cine, delivery
+    valid_id(subject_id)
+    try:
+        return _legacy_verified_stream(subject_id, season, episode, quality, resource_id, session_id)
+    except HTTPException as exc:
+        if exc.status_code in (401, 403, 429):
+            raise
+    except Exception as exc:
+        logger.info('Legacy playback provider unavailable: %s', type(exc).__name__)
+    try:
+        detail = cine.engine.get_details(subject_id)
+        source_season, source_episode = (0, 0) if str(detail.get('subject_type') or detail.get('subjectType')) == '1' else (season, episode)
+        sources = delivery.prepare_streams(cine.engine.get_streams(subject_id,
+            season=source_season, episode=source_episode,
+            detail_path=detail.get('detail_path'), prefer_web_mp4=True))
+        playable = [s for s in sources if str(s.get('play_url') or '').startswith('/api/')]
+        playable.sort(key=lambda s: (int(s.get('quality_value') or 0), str(s.get('format')).lower() == 'mp4'), reverse=True)
+        desired = int(quality.lower().rstrip('p')) if quality and quality.lower().endswith('p') else None
+        selected = next((s for s in playable if s.get('quality_value') == desired), None)
+        selected = selected or (playable[-1] if quality and quality.lower() == 'worst' and playable else next(iter(playable), None))
+        if selected is None:
+            raise HTTPException(502, 'Aucune source complète vérifiée disponible')
+        captions_partial = False
+        try:
+            captions = _register_captions(cine.engine.get_subtitles(subject_id,
+                season=source_season, episode=source_episode))
+        except Exception:
+            captions, captions_partial = [], True
+        return {'url': selected['play_url'], 'cookie': None, 'headers': {},
+                'duration': selected.get('duration_sec'), 'subtitles': captions,
+                'subtitle_url': captions[0]['url'] if captions else None,
+                'qualityList': list(dict.fromkeys(s.get('quality') for s in playable if s.get('quality'))),
+                'streamId': None, 'season': season, 'episode': episode,
+                'source': 'cinekivu-verified-relay-fallback', 'audioVerified': False,
+                'subtitlesPartial': captions_partial}
+    except Exception as exc:
+        raise _remote_error(exc) from exc
+
 import os
 
 @app.get("/download/{subject_id}")
 async def proxy_download(
     request: Request,
-    subject_id: str, 
-    season: int = 1, 
-    episode: int = 1, 
-    quality: str = "720p", 
-    title: str = "Movie",
+    subject_id: str,
+    season: int = Query(1, ge=0, le=999),
+    episode: int = Query(1, ge=0, le=9999),
+    quality: str = Query("720p", pattern=r"(?i)^(auto|best|worst|360p|480p|720p|1080p|1440p|2160p)$"),
+    title: str = Query("Movie", max_length=240),
     session_id: Optional[str] = Cookie(None)
 ):
-    s = get_session(session_id)
-    
-    # PRIORITY 1: Carrier 301 (Legacy Mirror) specifically for raw MP4s
-    logger.info(f"Targeting Carrier 301 Raw Mirrors for {subject_id}...")
-    c_res = s["client"].request('POST', '/index/video/v_detail', data={'subjectId': subject_id, 'carrier': '301', 'quality': quality})
-    data = c_res.get("data")
-    if not isinstance(data, dict): data = {}
-    streams = data.get("streamList") or data.get("streams") or []
-    
-    # PRIORITY 2: Mobile Protocol (DASH/HLS) if MP4 is missing
-    if not streams:
-        res = s["stream"].get_play_info(subject_id, season=season, episode=episode)
-        data = res.get("data", {})
-        streams = data.get("streamList") or data.get("streams") or []
-    
-    if not streams: 
-        raise HTTPException(status_code=404, detail="No downloadable mirrors found")
-    
-    match = None
-    for st in streams:
-        if ".mp4" in st.get("url", "").lower():
-            match = st
-            break
-    if not match: match = streams[0]
-            
-    url = match.get("url")
-    cookie = data.get("signCookie") or match.get("signCookie") or ""
-    if not url: raise HTTPException(status_code=404)
-    
-    clean_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()
-    
-    # CASE 1: Native MP4 stream (Fully seekable via HTTPX byte ranges)
-    if ".mp4" in url.lower():
-        import httpx
-        req_hdrs = {"User-Agent": "ExoPlayerLib/2.18.7", "Cookie": cookie}
-        range_header = request.headers.get("Range")
-        if range_header: req_hdrs["Range"] = range_header
-            
-        client = httpx.AsyncClient(verify=True)
-        req = client.build_request("GET", url, headers=req_hdrs)
-        r = await client.send(req, stream=True)
-        
-        filename = f"{clean_title}_S{season}_E{episode}.mp4"
-        headers = {
-            "Content-Disposition": f"attachment; filename=\"{filename}\"",
-            "Accept-Ranges": r.headers.get("Accept-Ranges", "bytes"),
-            "Content-Length": r.headers.get("Content-Length", ""),
-            "Content-Range": r.headers.get("Content-Range", ""),
-            "Content-Type": "video/mp4"
-        }
-        
-        async def stream_generator():
-            async for chunk in r.aiter_bytes(chunk_size=1024 * 1024): yield chunk
+    """Compatibility download using the same verified MP4 relay as the SDK API."""
+    from starlette.concurrency import run_in_threadpool
+    from urllib.parse import quote
+    from cinekivu_bridge import valid_id, _subject, _remote_error
+    from cinekivu_downloads import Options, prepare, filename
+    from cinekivu_source import api as cine, delivery
+    valid_id(subject_id)
+    def resolve():
+        selected = _subject(cine.engine.get_details(subject_id))
+        if not selected or selected['subjectId'] != subject_id:
+            raise HTTPException(404, 'Titre introuvable')
+        options = Options(quality='BEST' if quality.lower() == 'auto' else quality)
+        return prepare(selected, options, max(1, season), max(1, episode))
+    try:
+        data = await run_in_threadpool(resolve)
+        response = await delivery.stable_download_stream(data['file']['mediaId'], request, cine.engine)
+        name = data['file']['filename']
+        if title != 'Movie':
+            name = filename(title, data['year'] or '', data['season'], data['episode'],
+                            data['file']['quality'] or 'video', 'mp4')
+        response.headers['content-disposition'] = "attachment; filename=\"cinekivu-download.mp4\"; filename*=UTF-8''" + quote(name, safe='')
+        return response
+    except Exception as exc:
+        raise _remote_error(exc) from exc
 
-        return StreamingResponse(
-            stream_generator(),
-            status_code=r.status_code,
-            headers={k: v for k, v in headers.items() if v},
-            background=httpx.AsyncClient().aclose
-        )
-        
-    # CASE 2: DASH (.mpd) or HLS (.m3u8) needs FFMPEG demuxing
-    # We pipe as MPEG-TS (.ts) because it is inherently seekable without needing a faststart moov atom!
-    import subprocess
-    filename = f"{clean_title}_S{season}_E{episode}.ts"
-    
-    def iter_ffmpeg():
-        cmd = [
-            'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
-            '-headers', f'Cookie: {cookie}\r\nUser-Agent: ExoPlayerLib/2.18.7\r\n',
-            '-i', url,
-            '-c', 'copy', '-f', 'mpegts', '-'
-        ]
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            while True:
-                chunk = process.stdout.read(2048 * 1024)
-                if not chunk: break
-                yield chunk
-        finally:
-            process.terminate()
-
-    return StreamingResponse(
-        iter_ffmpeg(), 
-        media_type="video/mp2t",
-        headers={
-            "Content-Disposition": f"attachment; filename=\"{filename}\""
-        }
-    )
 @app.get("/subtitles/search")
 def subtitle_search(query: str, session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
@@ -1725,18 +1716,21 @@ def get_subtitles(subject_id: str, se: int = 1, ep: int = 1, session_id: Optiona
 def get_history_position(subject_id: str, resource_id: str, session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
     res = s["client"].request('GET', '/wefeed-mobile-bff/subject-api/resource-position', params={'subjectId': subject_id, 'resourceId': resource_id})
-    return res
+    from moviebox_api.ott import _remote
+    return _remote(res)
 
 @app.post("/history/position")
-def save_history_position(subject_id: str, resource_id: str, position: int, session_id: Optional[str] = Cookie(None)):
+def save_history_position(subject_id: str, resource_id: str, position: int = Query(ge=0), session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
     res = s["client"].request('POST', '/wefeed-mobile-bff/subject-api/resource-position', data={'subjectId': subject_id, 'resourceId': resource_id, 'position': position})
-    return res
+    from moviebox_api.ott import _remote
+    return _remote(res)
 
 @app.post("/history/seen")
-def mark_have_seen(subject_id: str = None, progress: int = 0, total: int = 0, session_id: Optional[str] = Cookie(None)):
+def mark_have_seen(subject_id: str = Query(pattern=r'^[A-Za-z0-9_-]{1,100}$'),
+                   progress: int = Query(0, ge=0), total: int = Query(0, ge=0),
+                   session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
-    if not subject_id: return {"code": -1, "msg": "Missing ID"}
     res = s["user"].report_history(subject_id, progress, total)
     return res
 @app.post("/analytics/operation")
@@ -1822,9 +1816,9 @@ def toggle_watchlist(subject_id: str, active: bool, subject_type: int = 1, sessi
     return {"status": "success", "raw": res}
 
 class ProgressReport(BaseModel):
-    subject_id: str
-    progress_ms: int
-    total_ms: int
+    subject_id: str = Field(pattern=r'^[A-Za-z0-9_-]{1,100}$')
+    progress_ms: int = Field(ge=0)
+    total_ms: int = Field(ge=0)
     status: int = 1
 
 @app.post("/history/progress")
@@ -1844,21 +1838,27 @@ def get_post_count(subject_id: str, session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
     try:
         res = s["client"].request("GET", "/wefeed-mobile-bff/post/count/subject", params={"subjectId": subject_id})
+        from moviebox_api.ott import _remote
+        res = _remote(res)
         count = res.get("data", {}).get("count") or "0"
         return {"code": 0, "count": count}
-    except:
-        return {"code": 0, "count": "0"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, 'Compteur de commentaires indisponible chez le fournisseur') from exc
 
 @app.get("/groups/trending")
 def get_trending_groups(session_id: Optional[str] = Cookie(None)):
     s = get_session(session_id)
     try:
         res = s["client"].request("POST", "/wefeed-mobile-bff/group/list/trending-entrance", data={})
+        from moviebox_api.ott import _remote
+        res = _remote(res)
         data = res.get("data", {})
         items = data.get("items") or []
         return {"code": 0, "data": items}
-    except:
-        return {"code": 0, "data": []}
+    except Exception as exc:
+        raise HTTPException(503, 'Groupes tendance indisponibles chez le fournisseur') from exc
 
 @app.post("/post/like")
 def like_post(post_id: str, session_id: Optional[str] = Cookie(None)):
@@ -1891,20 +1891,28 @@ def get_interactive_posts(session_id: Optional[str] = Cookie(None)):
         # Pull from public interactive ranking feed
         res = s["client"].request("POST", "/wefeed-mobile-bff/interactive/post/list", 
                                  data={"page": 1, "pageSize": 20})
-        return res
+        from moviebox_api.ott import _remote
+        return _remote(res)
+    except HTTPException as exc:
+        raise HTTPException(503, 'Flux communautaire interactif momentanément indisponible chez le fournisseur') from exc
     except Exception as e:
-        return {"code": 1, "msg": str(e)}
+        raise HTTPException(503, 'Flux communautaire interactif momentanément indisponible chez le fournisseur') from e
 
 @app.get("/post/list/{subject_id}")
-def get_subject_posts(subject_id: str, page: int = 1, session_id: Optional[str] = Cookie(None)):
+def get_subject_posts(subject_id: str, page: int = Query(1, ge=1, le=200), session_id: Optional[str] = Cookie(None)):
+    from cinekivu_bridge import valid_id
+    from moviebox_api.ott import _remote
+    valid_id(subject_id)
     s = get_session(session_id)
     try:
         # subject-specific post list
-        res = s["client"].request("POST", "/wefeed-mobile-bff/post/list/subject", 
-                                 data={"subjectId": subject_id, "page": page, "pageSize": 10})
-        return res
-    except Exception as e:
-        return {"code": 1, "msg": str(e)}
+        res = s["client"].request("GET", "/wefeed-mobile-bff/post/list/subject",
+                                 params={"id": subject_id, "page": page-1, "perPage": 10})
+        return _remote(res)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, 'Commentaires du fournisseur indisponibles') from exc
 
 @app.get("/debug_history")
 def debug_history_disabled():
@@ -1919,14 +1927,25 @@ def subtitle_proxy_disabled():
 
 # Versioned, application-oriented OTT endpoints with local persistence.
 from moviebox_api.ott import install_ott_routes
-from cinekivu_bridge import install_cinekivu_routes, cine_home, cine_catalog, cine_search
+from cinekivu_bridge import install_cinekivu_routes, cine_home, cine_catalog, cine_search, cine_genre
 install_cinekivu_routes(app)
 install_ott_routes(app, get_session, map_item, format_tab_sections, _extract_items,
-                   home_loader=cine_home, catalog_loader=cine_catalog, search_loader=cine_search)
+                   home_loader=cine_home, catalog_loader=cine_catalog, search_loader=cine_search,
+                   genre_loader=cine_genre)
 
 # Context-aware search and catalog recommendations (CineKivu-first).
 from cinekivu_discovery import install_discovery_routes
 install_discovery_routes(app, get_session, map_item)
+
+# Local, stateless corpus discovery; IDs are separate from provider subject IDs.
+from cinekivu_recommendations import install_recommendation_routes
+install_recommendation_routes(app)
+from cinekivu_reference import install_reference_routes
+install_reference_routes(app)
+from cinekivu_enrichment import install_enrichment_routes
+install_enrichment_routes(app)
+from cinekivu_downloads import install_download_routes
+install_download_routes(app)
 
 if __name__ == "__main__":
     # DISABLE RELOAD: Prevents Windows-specific crash loops during active streaming/editing
@@ -1943,3 +1962,8 @@ install_media_routes(app)
 _preview_directory = Path(__file__).resolve().parent.parent / 'preview'
 if _preview_directory.is_dir():
     app.mount('/preview', StaticFiles(directory=str(_preview_directory), html=True), name='preview')
+
+# Serve the application and API on one origin, including browser session cookies.
+_frontend_directory = Path(__file__).resolve().parent.parent / 'web-release'
+if _frontend_directory.is_dir():
+    app.mount('/app', StaticFiles(directory=str(_frontend_directory), html=True), name='frontend')
