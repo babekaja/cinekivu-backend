@@ -1,4 +1,4 @@
-# Recherche approfondie — MovieBox sur Render, 8 novembre 2026
+# Recherche approfondie — MovieBox sur Render, 8–9 novembre 2026
 
 Le dernier HTTP 429 ne suffit pas à prouver une saturation ni un blocage de
 l'adresse Render. Une comparaison contrôlée révèle un défaut dans notre repli
@@ -184,3 +184,106 @@ mais sa connexion montante et sa disponibilité deviennent celles du service.
 Aucun proxy externe n'est choisi ou acheté, aucun tunnel public n'est ouvert
 pendant cette recherche. Changer uniquement le plan Render ne constitue pas
 une solution vérifiée.
+
+## Vérifications supplémentaires du 9 novembre
+
+### Les routes de ressources alternatives ne résolvent pas ce cas
+
+Le [code de Spün](https://github.com/byspun/spun-moviebox-api/blob/main/src/index.ts)
+utilise l'ancienne route `/resource`, `se=0&ep=0`, une résolution explicite et
+`perPage=10`. Son commentaire affirme que les valeurs supérieures à dix sont
+rejetées. Notre repli utilise `/resource/v2` ; il fallait donc vérifier cette
+différence au lieu de reprendre le commentaire comme une règle du fournisseur.
+
+Comparaison réelle sur le Mac, même session visiteur, MobLand S1E1 :
+
+| Route et paramètres | Code métier | Résultats | Résultat pour S1E1 |
+| --- | --- | --- | --- |
+| `/resource/v2`, `perPage=20`, filtre S1E1, résolution 0 | 0 | 1 | Avertissement |
+| `/resource/v2`, `perPage=10`, filtre S1E1, résolution 0 | 0 | 1 | Avertissement |
+| `/resource`, `perPage=10`, `se=ep=0`, résolution 480 | 0 | 10 | Avertissement |
+| `/resource`, `perPage=20`, `se=ep=0`, résolution 480 | 0 | 18 | Avertissement |
+
+Tous les liens de ces quatre réponses sont reconnus comme clips
+d'avertissement. La limite de dix n'est donc pas reproduite pour ces appels,
+et sa modification n'apporterait aucun épisode jouable. Cette mesure ne
+généralise pas le comportement à tous les titres, profils ou hôtes.
+Trace sans liens signés : `build/research-resource-routes.json`.
+
+Une deuxième piste vient de
+[MovieBox-Tui](https://github.com/mesamirh/MovieBox-Tui/blob/main/src/providers/moviebox/adapt.rs),
+qui lit aussi `resourceDetectors` dans les détails du titre. Notre appel réel
+`/subject-api/get` renvoie un détecteur, mais aucune `resolutionList` ni
+`downloadUrl`. Les routes `play-info/v2` et `play-info` renvoient chacune un
+flux avec une URL d'avertissement, sans politique DASH exploitable. Ces trois
+réponses ont le code métier 0 : ce code seul ne prouve pas la disponibilité
+du film. Trace : `build/research-resource-detectors.json`.
+
+Le [relais Spün](https://github.com/byspun/spun-moviebox-api/blob/main/relay/README.md)
+décrit un déploiement Render, tandis que son
+[serveur](https://github.com/byspun/spun-moviebox-api/blob/main/relay/server.js)
+emploie un profil Android et l'hôte `bcdn.hakunaymatata.com`. Cela constitue
+une autre implémentation, pas une preuve que le même profil accepte nos liens
+actuels. Notre contrôle antérieur a déjà montré l'échec du profil Android sans
+Referer sur la source testée.
+
+### Nouveau contrôle Render
+
+La requête MobLand existante a été consultée avec le plugin Postman, puis
+exécutée avec Newman sur Render : HTTP 200 pour l'API, six assertions réussies,
+mais **zéro source jouable**. La comparaison opt-in reçoit HTTP 426 avec httpx
+HTTP/2 et curl_cffi Chrome 152, zéro octet média lu pour chacun. La vérification
+de lecture rapporte également un refus MP4 429 et un refus DASH 426.
+
+Le recontrôle local de cette même passe, sur une source fraîche obtenue par le
+moteur, réussit avec les deux transports : HTTP 206, plage correcte, 32 octets
+et signature MP4 valide. Trace : `build/research-transport-control.json`.
+
+Les assertions portent sur le contrat, les diagnostics et leur borne de
+lecture ; elles ne déclarent pas la vidéo fonctionnelle. Aucune modification
+fonctionnelle de l'API n'a été faite pendant cette passe de recherche ; la
+suite de régression complète n'a donc pas été relancée.
+
+### Changement concret nécessaire dans CineKivu
+
+L'inspection du projet confirme deux contraintes indépendantes du fournisseur :
+
+- `cinekivu_bridge.py` ne renvoie que les sources que Render a pu vérifier et
+  enregistrer avec une URL locale `/api/…`. Un refus du CDN sur Render supprime
+  donc la source de la réponse destinée au lecteur.
+- `shared/src/commonMain/kotlin/org/example/project/App.kt:1530` exige aussi
+  `playUrl` pour les MP4. Retirer seulement ce filtre ne suffirait pas : le
+  backend n'a pas fourni le candidat direct à cet écran.
+
+Le premier prototype pertinent est un mode de **vérification sur l'appareil** :
+
+1. Distinguer explicitement les candidats du fournisseur des sources déjà
+   vérifiées par le serveur ; ne pas les annoncer comme jouables à ce stade.
+2. Depuis le téléphone, vérifier la même URL fraîche avec ses en-têtes, une
+   plage de 32 octets et un contrôle MP4. L'échec reste affiché si cette sonde
+   échoue. Il faut aussi conserver l'identité du titre, de la langue et de
+   l'épisode lors de la sélection.
+3. Lire puis télécharger avec le même chemin réseau et les mêmes en-têtes.
+   Gérer l'expiration du lien, la reprise et le renouvellement sans inscrire
+   les URL signées dans les journaux.
+
+Sur Android, `VideoPlayer.android.kt:73` transmet déjà les en-têtes à
+`DefaultHttpDataSource.Factory`, conformément à l'
+[API Media3 1.9.0](https://github.com/androidx/media/blob/1.9.0/libraries/datasource/src/main/java/androidx/media3/datasource/DefaultHttpDataSource.java).
+Sur iOS, `VideoPlayer.ios.kt:85` construit actuellement `AVURLAsset` avec
+`options = null` et ne transmet pas les en-têtes du média : il faut concevoir
+et tester ce transport avant d'annoncer la même prise en charge. La voie MP4
+doit être validée séparément du HLS/DASH.
+
+Pour le Web, le relais doit sortir par un réseau préalablement vérifié. La
+machine locale est un candidat étayé par nos sondes ; la connectivité publique,
+le débit montant et la disponibilité restent à mettre en place. Un relais
+personnel et un accès direct natif sont donc deux architectures distinctes,
+pas un changement de User-Agent qui réparerait tous les clients.
+
+**Limite encore ouverte :** les comparaisons actuelles emploient une URL
+identique entre transports sur chaque serveur, pas une unique URL transférée
+entre Render et le Mac. Il reste à vérifier si une source obtenue sur Render
+est utilisable depuis le téléphone, ou si sa résolution doit elle aussi avoir
+lieu sur le réseau du téléphone. Aucun prototype de lecture directe ni relais
+public n'a été déployé pendant cette recherche.

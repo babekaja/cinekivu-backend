@@ -447,7 +447,7 @@ class MovieBoxEngine:
         return season_list
 
     def get_streams(self, subject_id: str, season: int = 0, episode: int = 0, detail_path: Optional[str] = None,
-                    prefer_web_mp4: bool = False) -> List[Dict[str, Any]]:
+                    prefer_web_mp4: bool = False, device_delivery: bool = False) -> List[Dict[str, Any]]:
         lookup_started = time.monotonic()
         if not detail_path:
             try:
@@ -606,7 +606,12 @@ class MovieBoxEngine:
                                             "error": type(exc).__name__})
                 continue
 
-        if prefer_web_mp4:
+        if device_delivery:
+            from .device_delivery import candidates
+            if candidates(streams, subject_id, season, episode):
+                return streams  # No CDN bytes or server verification in native-device mode.
+
+        if prefer_web_mp4 and not device_delivery:
             web_mp4 = [s for s in streams if str(s.get("format", "")).lower() == "mp4"]
             durations = []
             for stream in streams:

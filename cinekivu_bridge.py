@@ -389,7 +389,7 @@ def install_cinekivu_routes(app):
                                   'revision': delivery.API_REVISION, 'home': 'cinekivu-web',
                                   'provider_http_client': type(cine.engine.session).__module__.split('.')[0],
                                   'client_ip_forwarding_enabled': forwarding_enabled(), 'cdn_http2_enabled': True, 'cdn_android_fallback_enabled': True, 'cdn_android_referer': 'moviebox.ph', 'cdn_transport_probe_available': True,
-                                  'languages_priority': ['fr','en']}}
+                                  'device_mp4_candidates_available': True, 'languages_priority': ['fr','en']}}
 
     @router.get('/titles/{subject_id}')
     def title(subject_id: str):
@@ -483,12 +483,13 @@ def install_cinekivu_routes(app):
             raise HTTPException(502, 'Format ou serveur de sous-titres indisponible') from exc
 
     @router.get('/titles/{subject_id}/streams')
-    def streams(subject_id: str, season: int = Query(1, ge=1, le=999),
+    def streams(subject_id: str, response: Response, season: int = Query(1, ge=1, le=999),
                 episode: int = Query(1, ge=1, le=9999),
                 quality: str = Query('auto', pattern='^(auto|360p|480p|720p|1080p|2160p)$'),
                 detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$'),
                 subject_type: int | None = Query(None, ge=1, le=2),
-                probe_transport: bool = Query(False, description="Compare two bounded CDN transports; does not authorize playback")):
+                probe_transport: bool = Query(False, description="Compare two bounded CDN transports; does not authorize playback"),
+                delivery_mode: str = Query('relay', pattern='^(relay|device)$')):
         valid_id(subject_id)
         try:
             # CineKivu performs its own media verification before advertising a local playback URL.
@@ -503,10 +504,19 @@ def install_cinekivu_routes(app):
                     pass
             kind = (details or {}).get('subject_type') or (details or {}).get('subjectType') or subject_type
             is_movie = str(kind) == '1'
+            options = {'device_delivery': True} if delivery_mode == 'device' else {'prefer_web_mp4': True}
             upstream = cine.engine.get_streams(
                 subject_id, season=0 if is_movie else season, episode=0 if is_movie else episode,
                 detail_path=(details or {}).get('detail_path') or (details or {}).get('detailPath') or detail_path,
-                prefer_web_mp4=True)
+                **options)
+            if delivery_mode == 'device':
+                from cinekivu_source.device_delivery import candidates
+                items = candidates(upstream, subject_id, 0 if is_movie else season, 0 if is_movie else episode)
+                response.headers['Cache-Control'] = 'private, no-store'
+                return {'code': 0, 'data': {'subject_id': subject_id, 'season': season, 'episode': episode,
+                        'delivery_mode': 'device', 'sources': [], 'playable_count': 0,
+                        'device_candidates': items, 'candidate_count': len(items), 'audio_verified': False,
+                        'message': None if items else 'Aucune source MP4 disponible pour une vérification sur cet appareil.'}}
             transport_diagnostic = None
             if probe_transport:
                 from cinekivu_source.transport_probe import compare_transports
@@ -553,6 +563,11 @@ def install_cinekivu_routes(app):
         except Exception as exc: raise _remote_error(exc) from exc
 
     app.include_router(router)
+    @app.get('/api/download/device/{media_id}', tags=['Téléchargements CineKivu'])
+    def device_download(media_id: str, response: Response):
+        from cinekivu_source.device_delivery import resolve_download
+        response.headers['Cache-Control'] = 'private, no-store'
+        return resolve_download(media_id, cine.engine)
     async def resumable_download(media_id: str, request: Request):
         return await delivery.stable_download_stream(media_id, request, cine.engine)
     app.add_api_route('/api/download/by-id/{media_id}', resumable_download, methods=['GET'], tags=['Téléchargements CineKivu'])

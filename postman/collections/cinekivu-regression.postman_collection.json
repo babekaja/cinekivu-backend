@@ -5,7 +5,7 @@
     "description": "Régression CineKivu : catalogue réel, recherche, recommandations locales, référentiel, enrichissement externe, résolution SDK, transport HTTP synthétique et état utilisateur anonyme. Les écritures OTP/compte/publications sont simulées dans pytest. Le dossier Audit complet vérifie aussi les validations, les routes désactivées et les erreurs fournisseur explicites. Exécution locale : bash scripts/test_api.sh. baseUrl vise le backend réel sur 8000 ; sdkBaseUrl vise la fixture HTTP isolée sur 8001. Le plugin hébergé ne peut pas exécuter localhost.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "createdAt": "2026-11-06T22:31:13.000Z",
-    "updatedAt": "2026-11-08T20:18:04.000Z",
+    "updatedAt": "2026-11-09T06:59:50.000Z",
     "lastUpdatedBy": "41970206",
     "uid": "41970206-39202388-c5d9-4d8f-8e8e-f0c042a2e169"
   },
@@ -4573,6 +4573,73 @@
       "createdAt": "2026-11-08T20:18:04.000Z",
       "updatedAt": "2026-11-08T21:33:00.000Z",
       "uid": "41970206-fee15660-9b46-44bf-aae3-30d31de3e202"
+    },
+    {
+      "name": "Lecture native — candidats MobLand S1E1",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const d = pm.response.json().data;",
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Private no-store candidates', () => pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'));",
+              "pm.test('Candidates are never server-verified sources', () => { pm.expect(d.delivery_mode).to.eql('device'); pm.expect(d.playable_count).to.eql(0); pm.expect(d.sources).to.eql([]); });",
+              "pm.test('Candidate count is consistent and bounded', () => { pm.expect(d.device_candidates).to.be.an('array'); pm.expect(d.candidate_count).to.eql(d.device_candidates.length); pm.expect(d.candidate_count).to.be.at.most(7); });",
+              "pm.test('Only scoped MP4 candidates with explicit pending verification', () => { for (const s of d.device_candidates) { const u = require('url').parse(s.url); pm.expect(u.protocol).to.eql('https:'); pm.expect(u.hostname).to.match(/\\.hakunaymatata\\.com$/); pm.expect(u.pathname).to.match(/\\.mp4$/i); pm.expect(s.validation).to.eql('required_on_device'); pm.expect(s.subject_id).to.eql('4335165664987072680'); pm.expect(s.season).to.eql(1); pm.expect(s.episode).to.eql(1); pm.expect(s.download.resume_url).to.eql('/api/download/device/' + s.id); } });",
+              "pm.test('No provider account credentials', () => { for (const s of d.device_candidates) { pm.expect(s).not.to.have.property('cookie'); pm.expect(s).not.to.have.property('play_url'); for (const k of Object.keys(s.headers)) pm.expect(['User-Agent','Referer','Origin','Accept','Accept-Encoding']).to.include(k); } });",
+              "pm.test('Unavailability remains explicit', () => { if (!d.candidate_count) pm.expect(d.message).to.be.a('string').and.not.empty; });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "id": "a4f44973-931b-4400-8dcd-00e6724bcd4d",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/4335165664987072680/streams?subject_type=2&season=1&episode=1&detail_path=mobland-wWHa6Cu6fa5&delivery_mode=device",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "4335165664987072680",
+            "streams"
+          ],
+          "query": [
+            {
+              "key": "subject_type",
+              "value": "2"
+            },
+            {
+              "key": "season",
+              "value": "1"
+            },
+            {
+              "key": "episode",
+              "value": "1"
+            },
+            {
+              "key": "detail_path",
+              "value": "mobland-wWHa6Cu6fa5"
+            },
+            {
+              "key": "delivery_mode",
+              "value": "device"
+            }
+          ]
+        },
+        "description": "Opt-in MP4 candidates, unverified by the server. The native app must validate a 32-byte range before playback. This request never tests full video delivery."
+      },
+      "response": [],
+      "createdAt": "2026-11-09T06:59:50.000Z",
+      "updatedAt": "2026-11-09T07:00:28.000Z",
+      "uid": "41970206-a4f44973-931b-4400-8dcd-00e6724bcd4d"
     }
   ],
   "variable": [
