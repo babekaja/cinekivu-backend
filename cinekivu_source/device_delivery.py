@@ -24,7 +24,7 @@ def allowed_device_url(url):
         return False
 
 
-def candidates(streams, subject_id, season, episode):
+def candidates(streams, subject_id, season, episode, detail_path=None):
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,40}', subject_id):
         return []
     durations = []
@@ -54,23 +54,26 @@ def candidates(streams, subject_id, season, episode):
             continue
         seen.add(quality)
         media_id = f'md-{subject_id}-s{season}e{episode}-q{quality}'
+        download_url = f'/api/download/device/{media_id}'
+        if isinstance(detail_path, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,319}', detail_path):
+            download_url += '?detail_path=' + detail_path
         result.append({'id': media_id, 'subject_id': subject_id, 'season': season, 'episode': episode,
                        'url': url, 'format': 'MP4', 'quality': f'{quality}p', 'quality_value': quality,
                        'codec': stream.get('codec'), 'duration': duration,
                        'validation': 'required_on_device',
                        'headers': {'User-Agent': USER_AGENT, 'Referer': 'https://moviebox.ph/',
                                    'Origin': 'https://moviebox.ph', 'Accept': '*/*', 'Accept-Encoding': 'identity'},
-                       'download': {'id': media_id, 'url': f'/api/download/device/{media_id}',
-                                    'resume_url': f'/api/download/device/{media_id}'}})
+                       'download': {'id': media_id, 'url': download_url, 'resume_url': download_url}})
     return sorted(result, key=lambda item: item['quality_value'])[:7]
 
 
-def resolve_download(media_id, engine):
+def resolve_download(media_id, engine, detail_path=None):
     match = re.fullmatch(r'md-([A-Za-z0-9_-]{1,40})-s([0-9]{1,3})e([0-9]{1,4})-q(240|360|480|720|1080|1440|2160)', media_id)
     if not match or len(media_id) > 80:
         raise HTTPException(422, 'Identifiant de téléchargement invalide')
     subject_id, season, episode = match[1], int(match[2]), int(match[3])
-    streams = engine.get_streams(subject_id, season=season, episode=episode, device_delivery=True)
+    options = {'detail_path': detail_path} if detail_path else {}
+    streams = engine.get_streams(subject_id, season=season, episode=episode, device_delivery=True, **options)
     selected = next((item for item in candidates(streams, subject_id, season, episode)
                      if item['id'] == media_id), None)
     if selected is None:

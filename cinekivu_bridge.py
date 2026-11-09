@@ -511,7 +511,8 @@ def install_cinekivu_routes(app):
                 **options)
             if delivery_mode == 'device':
                 from cinekivu_source.device_delivery import candidates
-                items = candidates(upstream, subject_id, 0 if is_movie else season, 0 if is_movie else episode)
+                items = candidates(upstream, subject_id, 0 if is_movie else season, 0 if is_movie else episode,
+                                   (details or {}).get('detail_path') or detail_path)
                 response.headers['Cache-Control'] = 'private, no-store'
                 return {'code': 0, 'data': {'subject_id': subject_id, 'season': season, 'episode': episode,
                         'delivery_mode': 'device', 'sources': [], 'playable_count': 0,
@@ -564,10 +565,11 @@ def install_cinekivu_routes(app):
 
     app.include_router(router)
     @app.get('/api/download/device/{media_id}', tags=['Téléchargements CineKivu'])
-    def device_download(media_id: str, response: Response):
+    def device_download(media_id: str, response: Response,
+                        detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$')):
         from cinekivu_source.device_delivery import resolve_download
         response.headers['Cache-Control'] = 'private, no-store'
-        return resolve_download(media_id, cine.engine)
+        return resolve_download(media_id, cine.engine, detail_path)
     async def resumable_download(media_id: str, request: Request):
         return await delivery.stable_download_stream(media_id, request, cine.engine)
     app.add_api_route('/api/download/by-id/{media_id}', resumable_download, methods=['GET'], tags=['Téléchargements CineKivu'])

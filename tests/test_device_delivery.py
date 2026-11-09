@@ -89,3 +89,14 @@ def test_download_resolves_same_episode_and_quality_only(monkeypatch):
     assert seen == [('123', {'season': 1, 'episode': 2, 'device_delivery': True})]
     assert TestClient(app).get('/api/download/device/md-123-s1e2-q720').status_code == 409
     assert TestClient(app).get('/api/download/device/invalid').status_code == 422
+
+
+def test_download_preserves_catalogue_path_and_rejects_url_injection(monkeypatch):
+    seen = []
+    monkeypatch.setattr(cine.engine, 'get_streams', lambda sid, **kw: seen.append(kw) or [source()])
+    item = candidates([source()], '123', 1, 2, 'series-path')[0]
+    assert item['download']['resume_url'].endswith('?detail_path=series-path')
+    response = TestClient(app).get(item['download']['resume_url'])
+    assert response.status_code == 200 and seen[0]['detail_path'] == 'series-path'
+    response = TestClient(app).get('/api/download/device/md-123-s1e2-q480', params={'detail_path': 'https://evil.test/'})
+    assert response.status_code == 422
