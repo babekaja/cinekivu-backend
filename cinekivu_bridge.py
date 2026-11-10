@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
 
 from cinekivu_source import api as cine
 from cinekivu_source import delivery
@@ -93,6 +94,28 @@ def _subject(raw: dict):
             'subjectType': stype, 'language': src.get('language') or '',
             'edition': 'fr' if is_french_edition(str(title)) else 'unknown',
             'audioVerified': False, 'detail_path': src.get('detailPath') or src.get('detail_path')}
+
+
+def _audio_dubs(values: Any) -> list[dict]:
+    """Keep actual dubbed editions out of the playback language selector.
+
+    MovieBox exposes dubbed audio and subtitle-only editions in the same ``dubs``
+    array.  Returning the latter here made the clients advertise subtitles as
+    selectable audio languages.
+    """
+    result = []
+    for value in values if isinstance(values, list) else []:
+        if not isinstance(value, dict):
+            continue
+        kind = value.get('type')
+        name = str(value.get('lang_name') or value.get('lanName') or
+                   value.get('language') or '').casefold()
+        if kind is not None and str(kind).casefold() not in ('0', 'audio', 'dub'):
+            continue
+        if ' sub' in name and not value.get('original'):
+            continue
+        result.append(value)
+    return result
 
 
 def _titles(raw: Any, limit: int = 150) -> list[dict]:
@@ -392,28 +415,45 @@ def install_cinekivu_routes(app):
                                   'device_mp4_candidates_available': True, 'languages_priority': ['fr','en']}}
 
     @router.get('/titles/{subject_id}')
-    def title(subject_id: str):
+    async def title(subject_id: str):
         try:
-            raw = cine.engine.get_details(valid_id(subject_id))
+            raw = await run_in_threadpool(cine.engine.get_details, valid_id(subject_id))
             data = _subject(raw) or {}
             from cinekivu_discovery import normalize_people
             return {'code': 0, 'data': {**data, 'description': synopsis(*(raw.get(key) for key in ('description', 'synopsis', 'overview', 'desc', 'introduction'))),
                     'cast': normalize_people(raw),
-                    'runtime': raw.get('duration'), 'dubs': raw.get('dubs') or [],
+                    'runtime': raw.get('duration'), 'dubs': _audio_dubs(raw.get('dubs')),
                     'raw_dubs': raw.get('dubs') or [], 'source': 'cinekivu',
                     'audio_verified': False}}
         except Exception as exc:
             try:
                 from cinekivu_web import live_title
-                fallback_item = live_title(subject_id)
+                from cinekivu_media_source import source_client
+                fallback_item = await run_in_threadpool(live_title, subject_id)
                 if fallback_item:
-                    return {'code': 0, 'data': {**fallback_item, 'source': 'cinekivu-fallback'}}
+                    rich = None
+                    path = fallback_item.get('detailPath') or fallback_item.get('detail_path')
+                    if isinstance(path, str) and path:
+                        try:
+                            candidate = await source_client.detail(path)
+                            if candidate.get('subjectId') == subject_id:
+                                rich = candidate
+                        except (httpx.HTTPError, OSError, ValueError):
+                            pass
+                    return {'code': 0, 'data': {**fallback_item,
+                            'description': synopsis(*((fallback_item.get(key) for key in ('description', 'synopsis', 'overview', 'desc'))),
+                                                    *((rich.get(key) for key in ('description', 'synopsis', 'overview', 'desc')) if rich else ())),
+                            'dubs': _audio_dubs(rich.get('dubs', []) if rich else fallback_item.get('dubs', [])),
+                            'raw_dubs': rich.get('dubs', []) if rich else fallback_item.get('dubs', []),
+                            'cast': rich.get('cast', fallback_item.get('cast', [])) if rich else fallback_item.get('cast', []),
+                            'source': 'cinekivu-public-ssr' if rich else 'cinekivu-fallback',
+                            'audio_verified': False}}
             except Exception:
                 pass
             raise _remote_error(exc) from exc
 
     @router.get('/titles/{subject_id}/editions')
-    def editions(subject_id: str):
+    async def editions(subject_id: str):
         """All declared dub links plus bounded catalog discovery for other languages.
 
         The label is not evidence of a playable audio track. The endpoint can
@@ -424,7 +464,21 @@ def install_cinekivu_routes(app):
             cached = _edition_cache.get(subject_id)
             if cached is not None:
                 return {'code': 0, 'data': cached}
-            source = cine.engine.get_details(subject_id)
+            mobile_available = True
+            try:
+                source = await run_in_threadpool(cine.engine.get_details, subject_id)
+            except Exception:
+                mobile_available = False
+                from cinekivu_web import live_title
+                from cinekivu_media_source import source_client
+                fallback = await run_in_threadpool(live_title, subject_id)
+                path = (fallback or {}).get('detailPath') or (fallback or {}).get('detail_path')
+                if not fallback or not isinstance(path, str) or not path:
+                    raise HTTPException(502, 'Les langues de cette édition sont momentanément indisponibles')
+                rich = await source_client.detail(path)
+                if rich.get('subjectId') != subject_id:
+                    raise HTTPException(502, 'La fiche linguistique ne correspond pas au titre demandé')
+                source = {**fallback, **rich, 'dubs': rich.get('dubs') or []}
             current = _subject(source)
             if not current:
                 raise HTTPException(404, 'Titre inconnu dans CineKivu')
@@ -432,9 +486,12 @@ def install_cinekivu_routes(app):
             def search(term: str):
                 return [_subject(row) for row in cine.engine.search(term, page=1)
                         if isinstance(row, dict)]
-            result = discovered_editions(subject_id, current, source.get('dubs') or [],
-                                         lambda term: (row for row in search(term) if row))
-            data = {'current': current, **result}
+            result = await run_in_threadpool(
+                discovered_editions, subject_id, current, source.get('dubs') or [],
+                (lambda term: (row for row in search(term) if row)) if mobile_available else (lambda term: ()),
+                max_queries=16 if mobile_available else 1)
+            data = {'current': current, **result,
+                    'discovery_mode': 'mobile-and-catalogue' if mobile_available else 'public-ssr-dubs'}
             _edition_cache.put(subject_id, data)
             return {'code': 0, 'data': data}
         except Exception as exc:

@@ -124,3 +124,16 @@ def test_hindi_suffix_preserves_other_editions_and_their_language():
     assert rows['english']['title'] == 'Naruto: Shippuden'
     assert rows['french']['languageCode'] == 'fr'
     assert all(not row['audioVerified'] for row in rows.values())
+
+
+def test_linked_audio_editions_exclude_subtitle_versions_and_keep_paths():
+    result = discovered_editions('original', {'title': 'MobLand', 'subjectType': 2}, [
+        {'subjectId': 'original', 'lanName': 'Original Audio', 'lanCode': 'en', 'type': 0},
+        {'subjectId': 'french', 'lanName': 'French dub', 'lanCode': 'fr', 'type': 0, 'detailPath': 'mobland-fr'},
+        {'subjectId': 'arabic-sub', 'lanName': 'Arabic sub', 'lanCode': 'ar', 'type': 1},
+        {'subjectId': 'ptbr', 'lanName': 'ptbr dub', 'lanCode': 'ptbr', 'type': 0, 'detailPath': 'mobland-ptbr'},
+    ], lambda _: [])
+    rows = {row['subjectId']: row for row in result['items']}
+    assert set(rows) == {'french', 'ptbr'}
+    assert rows['french']['detailPath'] == 'mobland-fr'
+    assert rows['ptbr']['languageCode'] == 'pt-BR'

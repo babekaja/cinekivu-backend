@@ -32,6 +32,22 @@ def test_public_ssr_detail_preserves_description_instead_of_dropping_it():
     assert parsed['description'] == 'Résumé & personnages.'
 
 
+def test_public_ssr_detail_decodes_real_audio_editions_and_ignores_unsafe_paths():
+    data = [
+        {'subject': 1, 'postList': 15},
+        {'subjectId': 2, 'title': 3, 'subjectType': 4, 'releaseDate': 5,
+         'detailPath': 6, 'description': 7, 'dubs': 8},
+        '123', 'Une série', 2, '2026-01-01', 'serie-safe', 'Résumé.', [9, 12],
+        {'subjectId': 10, 'lanName': 11, 'lanCode': 16, 'original': 17, 'type': 4, 'detailPath': 18},
+        '456', 'French dub',
+        {'subjectId': 13, 'lanName': 14, 'lanCode': 19, 'original': 17, 'type': 4, 'detailPath': 20},
+        '789', 'Hindi dub', [], 'fr', False, 'serie-fr', 'hi', 'https://evil.test/x']
+    html = '<script id="__NUXT_DATA__">'+json.dumps(data)+'</script>'
+    parsed = parse_public_detail(html)
+    assert parsed['subjectType'] == 2 and parsed['detailPath'] == 'serie-safe'
+    assert [(row['subjectId'], row['lanCode']) for row in parsed['dubs']] == [('456', 'fr')]
+
+
 def test_overview_exposes_the_secondary_synopsis_for_frontend_enrichment(monkeypatch):
     async def metadata(subject_id, live):
         return ({'subject_id': subject_id, 'title': 'Film', 'description': ''},

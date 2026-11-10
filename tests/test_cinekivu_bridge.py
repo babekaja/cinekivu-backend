@@ -150,6 +150,37 @@ def test_cinekivu_related_versions_from_declared_dubs(monkeypatch):
     assert all(item['audioVerified'] is False for item in values['items'])
 
 
+def test_editions_and_description_fall_back_to_public_ssr_on_render(monkeypatch):
+    import cinekivu_web
+    import cinekivu_media_source
+    monkeypatch.setattr(cine.engine, 'get_details', lambda sid: (_ for _ in ()).throw(ConnectionError('mobile blocked')))
+    monkeypatch.setattr(cinekivu_web, 'live_title', lambda sid: {
+        'subjectId': sid, 'title': 'MobLand', 'subjectType': 2,
+        'detailPath': 'mobland-safe', 'description': ''})
+    async def public_detail(path):
+        assert path == 'mobland-safe'
+        return {'subjectId': 'render-language-test', 'title': 'MobLand', 'subjectType': 2,
+                'detailPath': path, 'description': 'Synopsis public complet.', 'cast': [],
+                'dubs': [
+                    {'subjectId': 'render-language-test', 'lanName': 'Original Audio', 'lanCode': 'en', 'type': 0},
+                    {'subjectId': 'render-fr', 'lanName': 'French dub', 'lanCode': 'fr', 'type': 0, 'detailPath': 'mobland-fr'},
+                    {'subjectId': 'render-hi', 'lanName': 'Hindi dub', 'lanCode': 'hi', 'type': 0, 'detailPath': 'mobland-hi'},
+                    {'subjectId': 'render-sub', 'lanName': 'Arabic sub', 'lanCode': 'ar', 'type': 1, 'detailPath': 'mobland-ar-sub'}]}
+    monkeypatch.setattr(cinekivu_media_source.source_client, 'detail', public_detail)
+    detail = client.get('/api/v1/cinekivu/titles/render-language-test')
+    assert detail.status_code == 200
+    assert detail.json()['data']['description'] == 'Synopsis public complet.'
+    assert {dub['subjectId'] for dub in detail.json()['data']['dubs']} == {
+        'render-language-test', 'render-fr', 'render-hi'}
+    assert len(detail.json()['data']['raw_dubs']) == 4
+    response = client.get('/api/v1/cinekivu/titles/render-language-test/editions')
+    assert response.status_code == 200, response.text
+    data = response.json()['data']
+    assert data['discovery_mode'] == 'public-ssr-dubs'
+    assert {row['subjectId'] for row in data['items']} == {'render-fr', 'render-hi'}
+    assert all(row['detailPath'].startswith('mobland-') for row in data['items'])
+
+
 def test_legacy_search_uses_working_native_provider(monkeypatch):
     calls = []
     def native(query, page=1, subject_type=0):

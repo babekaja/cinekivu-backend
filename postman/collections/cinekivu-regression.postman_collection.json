@@ -4479,6 +4479,7 @@
               "const result=pm.response.json();",
               "pm.test('Audio / réponse métier valide',()=>pm.expect(result.code).to.eql(0));",
               "pm.test('Audio / éditions identifiées et sans promesse de piste vérifiée',()=>{pm.expect(result.data.items).to.be.an('array').that.is.not.empty;result.data.items.forEach(e=>{pm.expect(String(e.subjectId||e.id)).to.match(/^[a-zA-Z0-9_-]{1,80}$/);pm.expect(e.language).to.be.a('string');pm.expect(e.audioVerified).to.eql(false);});});",
+              "pm.test('Audio / les éditions sous-titrées ne polluent pas le filtre de langue',()=>{result.data.items.forEach(e=>{pm.expect(String(e.language||'').toLowerCase()).not.to.match(/\\bsub(?:title)?s?\\b|sous[- ]titres?/);});});",
               "pm.test('Audio / identifiants distincts',()=>{const ids=result.data.items.map(e=>String(e.subjectId||e.id));pm.expect(new Set(ids).size).to.eql(ids.length);});"
             ],
             "type": "text/javascript"

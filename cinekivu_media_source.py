@@ -88,6 +88,24 @@ def parse_public_detail(html: str) -> dict:
                 "avatarUrl": field(payload, star, "avatarUrl"),
                 "detailPath": field(payload, star, "detailPath"),
             })
+    dubs = []
+    for ref in (field(payload, subject, "dubs") or [])[:60]:
+        dub = deref(payload, ref)
+        if not isinstance(dub, dict):
+            continue
+        subject_id = str(field(payload, dub, "subjectId", ""))
+        detail_path = str(field(payload, dub, "detailPath", ""))
+        language_name = str(field(payload, dub, "lanName", ""))[:70]
+        language_code = str(field(payload, dub, "lanCode", ""))[:20]
+        kind = field(payload, dub, "type")
+        if (not subject_id.isdigit() or len(subject_id) > 40 or
+                (detail_path and not VALID_DETAIL.fullmatch(detail_path))):
+            continue
+        dubs.append({"subjectId": subject_id, "subject_id": subject_id,
+                     "lanName": language_name, "lang_name": language_name,
+                     "lanCode": language_code, "language": language_code,
+                     "original": field(payload, dub, "original") is True,
+                     "type": kind, "detailPath": detail_path})
     def number(val, kind):
         try: return kind(val)
         except (ValueError, TypeError): return None
@@ -95,7 +113,11 @@ def parse_public_detail(html: str) -> dict:
     return {
         "subjectId": str(field(payload, subject, "subjectId", "")),
         "title": field(payload, subject, "title", ""),
+        "subjectType": field(payload, subject, "subjectType"),
+        "releaseDate": field(payload, subject, "releaseDate"),
+        "detailPath": field(payload, subject, "detailPath", ""),
         "description": synopsis(*(field(payload, subject, key) for key in ('description', 'synopsis', 'overview', 'desc', 'introduction'))),
+        "dubs": dubs,
         "rating": {
             "value": number(field(payload, subject, "imdbRatingValue"), float),
             "count": number(field(payload, subject, "imdbRatingCount"), int),

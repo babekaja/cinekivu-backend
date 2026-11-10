@@ -36,10 +36,12 @@ _LANGS = {
     'ta': ('ta', 'tamil'), 'te': ('te', 'telugu'),
     'bn': ('bn', 'bengali', 'bangla'), 'ml': ('ml', 'malayalam'),
     'es-419': ('esla',),
+    'pt-BR': ('ptbr', 'pt-br', 'brazilian portuguese', 'portuguese brazil'),
 }
 _DISPLAY = {'fr':'Français','en':'Anglais','ja':'Japonais','es':'Espagnol',
             'pt':'Portugais','hi':'Hindi','ar':'Arabe','de':'Allemand',
-            'it':'Italien','ko':'Coréen','ru':'Russe','ta':'Tamoul','te':'Télougou','bn':'Bengali','ml':'Malayalam','es-419':'Espagnol (Amérique latine)'}
+            'it':'Italien','ko':'Coréen','ru':'Russe','ta':'Tamoul','te':'Télougou','bn':'Bengali','ml':'Malayalam','es-419':'Espagnol (Amérique latine)',
+            'pt-BR':'Portugais (Brésil)'}
 _QUERY_SUFFIXES = ('[Version Française]', '[Version Françaises]',
                    '[version françaises]', 'VF', '[French Dub]', '[English Dub]',
                    '[Japanese Dub]', '[Spanish Dub]', '[Hindi Dub]',
@@ -116,17 +118,25 @@ def discovered_editions(
     deadline = clock() + max_seconds
     for dub in list(linked)[:60]:
         if not isinstance(dub, dict): continue
+        kind = dub.get('type')
+        name = str(dub.get('lang_name') or dub.get('lanName') or dub.get('language') or '').strip()
+        if ((kind is not None and str(kind).casefold() not in ('0', 'audio', 'dub')) or
+                (' sub' in name.casefold() and not dub.get('original'))):
+            continue
         sid = str(dub.get('subject_id') or dub.get('subjectId') or '')
         if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', sid) or sid == subject_id: continue
-        name = str(dub.get('lang_name') or dub.get('lanName') or dub.get('language') or '').strip()
         code = language_code(str(dub.get('lanCode') or '')) or edition_language('', name) or language_code(str(dub.get('language') or ''))
         label = _DISPLAY.get(code, name[:70] or 'Langue non indiquée')
+        detail_path = str(dub.get('detailPath') or dub.get('detail_path') or '')
+        if detail_path and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,319}', detail_path):
+            detail_path = ''
         found[sid] = {
             'subjectId': sid, 'id': sid, 'title': strip_edition(str(current.get('title') or 'Titre'))[:200],
             'subjectType': current.get('subjectType'), 'releaseTime': current.get('releaseTime'),
             'language': label, 'languageCode': code, 'edition': code or 'unknown',
             'original': bool(dub.get('original')) or name.casefold() == 'original audio',
             'audioVerified': False, 'availability': 'catalog-linked', 'source': 'catalog-dubs',
+            'detailPath': detail_path,
         }
     queries = edition_queries(str(current.get('title') or ''), max_queries)
     for idx, term in enumerate(queries):
