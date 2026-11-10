@@ -309,11 +309,12 @@ def live_filter_options(category: str) -> dict:
     return native_options([native_filter_config(value) for value in categories])
 
 
-def live_title(subject_id: str) -> dict | None:
-    try:
-        return normalize_title(cine.engine.get_details(valid_id(subject_id)))
-    except Exception:
-        pass
+def live_title(subject_id: str, try_mobile: bool = True) -> dict | None:
+    if try_mobile:
+        try:
+            return normalize_title(cine.engine.get_details(valid_id(subject_id)))
+        except Exception:
+            pass
     # Search in the home page cache (featured + all sections).
     try:
         home_data = normalize_home(upstream('GET', '/home', params={'host': 'movieboxhd.net'}))

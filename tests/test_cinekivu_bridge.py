@@ -153,8 +153,12 @@ def test_cinekivu_related_versions_from_declared_dubs(monkeypatch):
 def test_editions_and_description_fall_back_to_public_ssr_on_render(monkeypatch):
     import cinekivu_web
     import cinekivu_media_source
-    monkeypatch.setattr(cine.engine, 'get_details', lambda sid: (_ for _ in ()).throw(ConnectionError('mobile blocked')))
-    monkeypatch.setattr(cinekivu_web, 'live_title', lambda sid: {
+    mobile_calls = []
+    def mobile_blocked(sid):
+        mobile_calls.append(sid)
+        raise ConnectionError('mobile blocked')
+    monkeypatch.setattr(cine.engine, 'get_details', mobile_blocked)
+    monkeypatch.setattr(cinekivu_web, 'live_title', lambda sid, try_mobile=True: {
         'subjectId': sid, 'title': 'MobLand', 'subjectType': 2,
         'detailPath': 'mobland-safe', 'description': ''})
     async def public_detail(path):
@@ -179,6 +183,30 @@ def test_editions_and_description_fall_back_to_public_ssr_on_render(monkeypatch)
     assert data['discovery_mode'] == 'public-ssr-dubs'
     assert {row['subjectId'] for row in data['items']} == {'render-fr', 'render-hi'}
     assert all(row['detailPath'].startswith('mobland-') for row in data['items'])
+    assert mobile_calls == ['render-language-test']
+
+
+def test_known_detail_path_skips_slow_mobile_language_lookup(monkeypatch):
+    import cinekivu_media_source
+    monkeypatch.setattr(cine.engine, 'get_details', lambda sid: pytest.fail('mobile lookup must be skipped'))
+    calls = []
+    async def public_detail(path):
+        calls.append(path)
+        return {'subjectId': 'fast-language-test', 'title': 'Série rapide', 'subjectType': 2,
+                'detailPath': path, 'description': 'Description rapide.', 'dubs': [
+                    {'subjectId': 'fast-language-test', 'lanName': 'Original Audio', 'lanCode': 'en', 'type': 0},
+                    {'subjectId': 'fast-fr', 'lanName': 'French dub', 'lanCode': 'fr', 'type': 0,
+                     'detailPath': 'serie-rapide-fr'}]}
+    monkeypatch.setattr(cinekivu_media_source.source_client, 'detail', public_detail)
+    detail = client.get('/api/v1/cinekivu/titles/fast-language-test',
+                        params={'detail_path': 'serie-rapide'})
+    assert detail.status_code == 200
+    editions = client.get('/api/v1/cinekivu/titles/fast-language-test/editions',
+                          params={'detail_path': 'serie-rapide'})
+    assert editions.status_code == 200
+    assert editions.json()['data']['items'][0]['subjectId'] == 'fast-fr'
+    # The title request primes both the public metadata and editions caches.
+    assert calls == ['serie-rapide']
 
 
 def test_legacy_search_uses_working_native_provider(monkeypatch):

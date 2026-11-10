@@ -118,6 +118,19 @@ def _audio_dubs(values: Any) -> list[dict]:
     return result
 
 
+def _cache_public_editions(subject_id: str, source: dict) -> dict | None:
+    """Materialize linked audio editions while the public detail is already hot."""
+    current = _subject(source)
+    if not current:
+        return None
+    current['audioVerified'] = False
+    result = discovered_editions(
+        subject_id, current, source.get('dubs') or [], lambda _term: (), max_queries=0)
+    data = {'current': current, **result, 'discovery_mode': 'public-ssr-dubs'}
+    _edition_cache.put(subject_id, data)
+    return data
+
+
 def _titles(raw: Any, limit: int = 150) -> list[dict]:
     """Extract titles from flexible CineKivu home envelopes, never section containers as films."""
     result = {}
@@ -415,9 +428,25 @@ def install_cinekivu_routes(app):
                                   'device_mp4_candidates_available': True, 'languages_priority': ['fr','en']}}
 
     @router.get('/titles/{subject_id}')
-    async def title(subject_id: str):
+    async def title(subject_id: str,
+                    detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$')):
+        subject_id = valid_id(subject_id)
+        if detail_path:
+            try:
+                from cinekivu_media_source import source_client
+                rich = await source_client.detail(detail_path)
+                if rich.get('subjectId') == subject_id:
+                    data = _subject(rich) or {}
+                    _cache_public_editions(subject_id, rich)
+                    return {'code': 0, 'data': {**data,
+                            'description': synopsis(*(rich.get(key) for key in ('description', 'synopsis', 'overview', 'desc'))),
+                            'dubs': _audio_dubs(rich.get('dubs')), 'raw_dubs': rich.get('dubs') or [],
+                            'cast': rich.get('cast') or [], 'source': 'cinekivu-public-ssr',
+                            'audio_verified': False}}
+            except (httpx.HTTPError, OSError, ValueError):
+                pass
         try:
-            raw = await run_in_threadpool(cine.engine.get_details, valid_id(subject_id))
+            raw = await run_in_threadpool(cine.engine.get_details, subject_id)
             data = _subject(raw) or {}
             from cinekivu_discovery import normalize_people
             return {'code': 0, 'data': {**data, 'description': synopsis(*(raw.get(key) for key in ('description', 'synopsis', 'overview', 'desc', 'introduction'))),
@@ -429,7 +458,8 @@ def install_cinekivu_routes(app):
             try:
                 from cinekivu_web import live_title
                 from cinekivu_media_source import source_client
-                fallback_item = await run_in_threadpool(live_title, subject_id)
+                # The mobile call above already failed; do not repeat its timeout.
+                fallback_item = await run_in_threadpool(live_title, subject_id, False)
                 if fallback_item:
                     rich = None
                     path = fallback_item.get('detailPath') or fallback_item.get('detail_path')
@@ -440,6 +470,8 @@ def install_cinekivu_routes(app):
                                 rich = candidate
                         except (httpx.HTTPError, OSError, ValueError):
                             pass
+                    if rich:
+                        _cache_public_editions(subject_id, {**fallback_item, **rich})
                     return {'code': 0, 'data': {**fallback_item,
                             'description': synopsis(*((fallback_item.get(key) for key in ('description', 'synopsis', 'overview', 'desc'))),
                                                     *((rich.get(key) for key in ('description', 'synopsis', 'overview', 'desc')) if rich else ())),
@@ -453,7 +485,8 @@ def install_cinekivu_routes(app):
             raise _remote_error(exc) from exc
 
     @router.get('/titles/{subject_id}/editions')
-    async def editions(subject_id: str):
+    async def editions(subject_id: str,
+                       detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$')):
         """All declared dub links plus bounded catalog discovery for other languages.
 
         The label is not evidence of a playable audio track. The endpoint can
@@ -465,13 +498,25 @@ def install_cinekivu_routes(app):
             if cached is not None:
                 return {'code': 0, 'data': cached}
             mobile_available = True
+            source = None
+            if detail_path:
+                try:
+                    from cinekivu_media_source import source_client
+                    rich = await source_client.detail(detail_path)
+                    if rich.get('subjectId') == subject_id:
+                        source = rich
+                        mobile_available = False
+                except (httpx.HTTPError, OSError, ValueError):
+                    pass
             try:
-                source = await run_in_threadpool(cine.engine.get_details, subject_id)
+                if source is None:
+                    source = await run_in_threadpool(cine.engine.get_details, subject_id)
             except Exception:
                 mobile_available = False
                 from cinekivu_web import live_title
                 from cinekivu_media_source import source_client
-                fallback = await run_in_threadpool(live_title, subject_id)
+                # The mobile call above already failed; do not pay the same timeout twice.
+                fallback = await run_in_threadpool(live_title, subject_id, False)
                 path = (fallback or {}).get('detailPath') or (fallback or {}).get('detail_path')
                 if not fallback or not isinstance(path, str) or not path:
                     raise HTTPException(502, 'Les langues de cette édition sont momentanément indisponibles')
