@@ -59,7 +59,8 @@ async def _base(subject_id: str) -> dict:
         path = live.get('detail_path') or _known_paths().get(subject_id)
         return {**live, 'detail_path': path, '_live': True}
     try:
-        current = await run_in_threadpool(live_title, subject_id)
+        # The mobile request above already failed; do not repeat the same timeout.
+        current = await run_in_threadpool(live_title, subject_id, False)
     except HTTPException:
         current = None
     if current:
@@ -71,7 +72,15 @@ async def _base(subject_id: str) -> dict:
     raise HTTPException(502, "Fiche actuelle indisponible")
 
 
-async def _metadata(subject_id: str, *, live: bool) -> tuple[dict, dict | None]:
+async def _metadata(subject_id: str, *, live: bool,
+                    detail_path: str | None = None) -> tuple[dict, dict | None]:
+    if live and detail_path:
+        try:
+            rich = await source_client.detail(detail_path)
+            if rich.get('subjectId') == subject_id:
+                return {**rich, 'detailPath': detail_path, '_live': True}, rich
+        except (httpx.HTTPError, OSError, ValueError) as exc:
+            log.info("Hinted public metadata unavailable for %s: %s", subject_id, type(exc).__name__)
     base = await _base(subject_id)
     rich = None
     path = base.get("detailPath") or base.get("detail_path")
@@ -156,9 +165,10 @@ def install_media_routes(app):
     router = APIRouter(prefix="/api/v1/media", tags=["CineKivu · notes et avis"])
 
     @router.get("/{subject_id}/overview")
-    async def overview(subject_id: str):
+    async def overview(subject_id: str,
+                       detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$')):
         from cinekivu_text import synopsis
-        base, rich = await _metadata(subject_id, live=True)
+        base, rich = await _metadata(subject_id, live=True, detail_path=detail_path)
         return {"subjectId": subject_id, "title": rich.get("title") if rich else base.get("title", ""),
                 "description": synopsis(*((base.get(key) for key in ('description', 'synopsis', 'overview', 'desc'))),
                                         *((rich.get(key) for key in ('description', 'synopsis', 'overview', 'desc')) if rich else ())),

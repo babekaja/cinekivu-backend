@@ -4518,6 +4518,46 @@
       "uid": "41970206-245b2eab-cc3d-46e8-9ce6-210fc07ceb79"
     },
     {
+      "name": "Description — édition linguistique sans erreur 502",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Description / HTTP 200 et jamais 502',()=>pm.response.to.have.status(200));",
+              "var descriptionResult=pm.response.json(); var descriptionData=descriptionResult.data||{};",
+              "pm.test('Description / réponse métier valide',()=>pm.expect(descriptionResult.code).to.eql(0));",
+              "pm.test('Description / synopsis réellement livré',()=>{pm.expect(descriptionData.description).to.be.a('string');pm.expect(descriptionData.description.trim().length).to.be.above(20);});",
+              "pm.test('Description / chemin mémorisé rapide',()=>{pm.expect(descriptionData.source).to.eql('cinekivu-public-ssr');pm.expect(pm.response.responseTime).to.be.below(10000);});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "id": "6bb2b8ec-2ae7-46b2-a5ec-d5222ae3f142",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/cinekivu/titles/5515429592825319400",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "cinekivu",
+            "titles",
+            "5515429592825319400"
+          ]
+        }
+      },
+      "response": [],
+      "createdAt": "2026-11-10T06:00:00.000Z",
+      "updatedAt": "2026-11-10T06:00:00.000Z",
+      "uid": "41970206-6bb2b8ec-2ae7-46b2-a5ec-d5222ae3f142"
+    },
+    {
       "name": "Lecture — diagnostic MobLand S1E1",
       "event": [
         {

@@ -37,6 +37,8 @@ MAX_CAPTION = 2 * 1024 * 1024
 _caption_lock = threading.RLock()
 _caption_sources: dict[str, dict[str, Any]] = {}
 _edition_cache = EditionCache(capacity=80, ttl=300)
+_detail_path_lock = threading.RLock()
+_detail_paths: dict[str, tuple[float, str]] = {}
 
 
 def valid_id(subject_id: str):
@@ -118,8 +120,41 @@ def _audio_dubs(values: Any) -> list[dict]:
     return result
 
 
+def _remember_detail_paths(source: dict) -> None:
+    """Remember public paths exposed by a verified SSR detail for old clients."""
+    candidates = [source, *(source.get('dubs') or [])]
+    now = time.monotonic()
+    with _detail_path_lock:
+        for value in candidates[:61]:
+            if not isinstance(value, dict):
+                continue
+            sid = str(value.get('subjectId') or value.get('subject_id') or '')
+            path = str(value.get('detailPath') or value.get('detail_path') or '')
+            if (_ID.fullmatch(sid) and
+                    re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,319}', path)):
+                _detail_paths[sid] = (now + 1800, path)
+        if len(_detail_paths) > 500:
+            for sid, (expiry, _) in list(_detail_paths.items()):
+                if expiry <= now or len(_detail_paths) > 400:
+                    _detail_paths.pop(sid, None)
+
+
+def _remembered_detail_path(subject_id: str) -> str | None:
+    now = time.monotonic()
+    with _detail_path_lock:
+        value = _detail_paths.get(subject_id)
+        if not value:
+            return None
+        expiry, path = value
+        if expiry <= now:
+            _detail_paths.pop(subject_id, None)
+            return None
+        return path
+
+
 def _cache_public_editions(subject_id: str, source: dict) -> dict | None:
     """Materialize linked audio editions while the public detail is already hot."""
+    _remember_detail_paths(source)
     current = _subject(source)
     if not current:
         return None
@@ -431,6 +466,7 @@ def install_cinekivu_routes(app):
     async def title(subject_id: str,
                     detail_path: str | None = Query(None, pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,319}$')):
         subject_id = valid_id(subject_id)
+        detail_path = detail_path or _remembered_detail_path(subject_id)
         if detail_path:
             try:
                 from cinekivu_media_source import source_client
@@ -537,6 +573,8 @@ def install_cinekivu_routes(app):
                 max_queries=16 if mobile_available else 1)
             data = {'current': current, **result,
                     'discovery_mode': 'mobile-and-catalogue' if mobile_available else 'public-ssr-dubs'}
+            if not mobile_available:
+                _remember_detail_paths(source)
             _edition_cache.put(subject_id, data)
             return {'code': 0, 'data': data}
         except Exception as exc:

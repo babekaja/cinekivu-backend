@@ -49,7 +49,7 @@ def test_public_ssr_detail_decodes_real_audio_editions_and_ignores_unsafe_paths(
 
 
 def test_overview_exposes_the_secondary_synopsis_for_frontend_enrichment(monkeypatch):
-    async def metadata(subject_id, live):
+    async def metadata(subject_id, live, **kwargs):
         return ({'subject_id': subject_id, 'title': 'Film', 'description': ''},
                 {'subjectId': subject_id, 'title': 'Film', 'synopsis': 'Résumé enrichi.'})
     monkeypatch.setattr(cinekivu_media, '_metadata', metadata)
@@ -57,6 +57,22 @@ def test_overview_exposes_the_secondary_synopsis_for_frontend_enrichment(monkeyp
     assert response.status_code == 200
     assert response.json()['subjectId'] == '123'
     assert response.json()['description'] == 'Résumé enrichi.'
+
+
+def test_overview_uses_known_public_path_without_mobile_502(monkeypatch):
+    import cinekivu_media
+    monkeypatch.setattr(cinekivu_media.cine.engine, 'get_details',
+                        lambda sid: pytest.fail('mobile detail must not run with a public path'))
+    async def public_detail(path):
+        assert path == 'edition-fr-safe'
+        return {'subjectId': '987', 'title': 'Film français', 'subjectType': 1,
+                'detailPath': path, 'description': 'Description publique complète.',
+                'dubs': [], 'cast': [], 'rating': {}}
+    monkeypatch.setattr(cinekivu_media.source_client, 'detail', public_detail)
+    response = TestClient(app).get('/api/v1/media/987/overview',
+                                   params={'detail_path': 'edition-fr-safe'})
+    assert response.status_code == 200
+    assert response.json()['description'] == 'Description publique complète.'
 
 
 def test_synopsis_is_bounded_and_never_invented():

@@ -192,6 +192,9 @@ def test_known_detail_path_skips_slow_mobile_language_lookup(monkeypatch):
     calls = []
     async def public_detail(path):
         calls.append(path)
+        if path == 'serie-rapide-fr':
+            return {'subjectId': 'fast-fr', 'title': 'Série rapide', 'subjectType': 2,
+                    'detailPath': path, 'description': 'Description française.', 'dubs': []}
         return {'subjectId': 'fast-language-test', 'title': 'Série rapide', 'subjectType': 2,
                 'detailPath': path, 'description': 'Description rapide.', 'dubs': [
                     {'subjectId': 'fast-language-test', 'lanName': 'Original Audio', 'lanCode': 'en', 'type': 0},
@@ -205,8 +208,11 @@ def test_known_detail_path_skips_slow_mobile_language_lookup(monkeypatch):
                           params={'detail_path': 'serie-rapide'})
     assert editions.status_code == 200
     assert editions.json()['data']['items'][0]['subjectId'] == 'fast-fr'
-    # The title request primes both the public metadata and editions caches.
-    assert calls == ['serie-rapide']
+    french = client.get('/api/v1/cinekivu/titles/fast-fr')
+    assert french.status_code == 200
+    assert french.json()['data']['description'] == 'Description française.'
+    # The title request primes the editions cache and remembers every linked path.
+    assert calls == ['serie-rapide', 'serie-rapide-fr']
 
 
 def test_legacy_search_uses_working_native_provider(monkeypatch):
