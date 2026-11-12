@@ -12,7 +12,6 @@ import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, Literal
-from urllib.parse import quote
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import Response
@@ -116,8 +115,9 @@ class BatchRequest(Options):
 
 def filename(title: str, year: str, season: int, episode: int, suffix: str, ext: str) -> str:
     title = re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', '_', title).strip(' .')[:110] or 'CineKivu'
-    label = f' S{season:02}E{episode:02}' if season else (f' ({year})' if year else '')
-    return re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', '_', f'{title}{label} - {suffix}.{ext}')
+    label = delivery.episode_name(season, episode) if season else (f' ({year})' if year else '')
+    ending = delivery.quality_name(suffix) if ext == 'mp4' else f' - {suffix}'
+    return re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', '_', f'{title}{label}{ending}.{ext}')
 
 
 def register_asset(**value) -> str:
@@ -202,7 +202,7 @@ def prepare(selected: dict, options: Options, season: int, episode: int) -> dict
         entry, qualities = choose_quality(downloadable, options.quality)
         download = entry['_download']
         name = filename(selected['title'], selected['releaseTime'], season, episode,
-                        str(entry.get('quality') or 'video'), 'mp4')
+                        str(entry.get('quality_value') or entry.get('quality') or ''), 'mp4')
         file = {'mediaId': download['id'], 'filename': name, 'mimeType': 'video/mp4',
                 'quality': entry.get('quality'), 'qualityValue': int(entry.get('quality_value') or 0),
                 'url': register_asset(kind='video', media_id=download['id'], filename=name),
@@ -315,7 +315,7 @@ def install_download_routes(app: FastAPI):
             mime = 'application/x-subrip' if item['format'] == 'srt' else 'text/vtt'
             result = Response(raw if request.method != 'HEAD' else b'', media_type=mime,
                               headers={'content-length': str(len(raw)), 'cache-control': 'private, no-store'})
-        result.headers['content-disposition'] = "attachment; filename=\"cinekivu-download\"; filename*=UTF-8''" + quote(item['filename'], safe='')
+        result.headers['content-disposition'] = delivery.attachment_disposition(item['filename'])
         return result
 
     router.add_api_route('/assets/{token}', asset, methods=['HEAD'], include_in_schema=False)

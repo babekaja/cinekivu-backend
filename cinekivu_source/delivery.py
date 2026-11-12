@@ -7,9 +7,10 @@ import secrets
 import socket
 import threading
 import time
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import httpx
 from fastapi import HTTPException, Request
@@ -291,6 +292,7 @@ def register_download(stream, subject_id, season, episode):
         if not source or source["expires"] <= time.monotonic():
             return None
         source["download_id"] = media_id
+        source["download_quality"] = stream.get("quality_value") or stream.get("quality")
         for old in [key for key, value in _download_sources.items() if value["expires"] <= time.monotonic()]:
             del _download_sources[old]
         _download_sources[media_id] = source
@@ -308,20 +310,45 @@ async def download_stream(token: str, media_id: str, request: Request):
     return response
 
 
-def _resolve_download(media_id, engine):
+def attachment_disposition(filename):
+    invalid = r'[\\/:*?"<>|\x00-\x1f\x7f]'
+    name = re.sub(invalid, '_', filename)
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+    ascii_name = re.sub(invalid, '_', ascii_name).strip()
+    if ascii_name.startswith('.'):
+        ascii_name = 'Video' + ascii_name
+    return f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{quote(name, safe="")}'
+
+
+def episode_name(season, episode):
+    return f" s{season} ep{episode}" if season and episode else ""
+
+
+def quality_name(quality):
+    match = re.fullmatch(r"([1-9][0-9]{0,3})\s*p?", str(quality or "").strip(), flags=re.IGNORECASE)
+    return f" {match[1]} p" if match else ""
+
+
+def _download_identity(media_id):
     match = re.fullmatch(r"mb-([A-Za-z0-9_-]{1,40})-s([0-9]{1,3})e([0-9]{1,4})-([a-f0-9]{12})", media_id)
     if not match or len(media_id) > 80:
         raise HTTPException(422, "Identifiant de téléchargement invalide")
+    subject, season, episode, _ = match.groups()
+    return subject, int(season), int(episode)
+
+
+def _resolve_download(media_id, engine):
+    subject, season, episode = _download_identity(media_id)
     # Resolve once for concurrent HEAD/GET attempts; never block the ASGI loop.
     with _download_resolution_lock:
         with _playback_lock:
             source = _download_sources.get(media_id)
             if source and source["expires"] > time.monotonic():
                 return source
-        entries = prepare_streams(engine.get_streams(match[1], season=int(match[2]),
-            episode=int(match[3]), prefer_web_mp4=True))
+        entries = prepare_streams(engine.get_streams(subject, season=season,
+            episode=episode, prefer_web_mp4=True))
         for entry in entries:
-            register_download(entry, match[1], int(match[2]), int(match[3]))
+            register_download(entry, subject, season, episode)
         with _playback_lock:
             source = _download_sources.get(media_id)
         if not source:
@@ -329,12 +356,21 @@ def _resolve_download(media_id, engine):
         return source
 
 
-async def stable_download_stream(media_id, request, engine):
+async def stable_download_stream(media_id, request, engine, title=None):
+    disposition = f'attachment; filename="cinekivu-{media_id}.mp4"'
+    stem = None
+    if title and title.strip():
+        _, season, episode = _download_identity(media_id)
+        stem = re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', ' ', title).strip(' .')
+        stem = stem.encode('utf-8')[:165].decode('utf-8', 'ignore').strip(' .') or 'Vidéo'
+        stem += episode_name(season, episode)
     for attempt in range(2):
         source = await asyncio.to_thread(_resolve_download, media_id, engine)
         try:
             response = await _relay_media(source["url"], source["headers"], request, source)
-            response.headers["content-disposition"] = f'attachment; filename="cinekivu-{media_id}.mp4"'
+            if stem:
+                disposition = attachment_disposition(f"{stem}{quality_name(source.get('download_quality'))}.mp4")
+            response.headers["content-disposition"] = disposition
             response.headers["content-type"] = "video/mp4"
             return response
         except HTTPException as error:

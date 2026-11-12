@@ -1376,8 +1376,8 @@ def get_streams(subject_id: str, se: int = 0, ep: int = 0, detail_path: Optional
 
 @app.get("/api/download/by-id/{media_id}")
 @app.head("/api/download/by-id/{media_id}", include_in_schema=False)
-async def resumable_download(media_id: str, request: Request):
-    return await stable_download_stream(media_id, request, engine)
+async def resumable_download(media_id: str, request: Request, title: str | None = Query(None, max_length=240)):
+    return await stable_download_stream(media_id, request, engine, title)
 
 app.get("/api/download/{token}/{media_id}")(download_stream)
 app.head("/api/download/{token}/{media_id}", include_in_schema=False)(download_stream)

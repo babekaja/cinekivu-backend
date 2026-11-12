@@ -19,7 +19,6 @@ import uuid
 import re
 import hmac
 import hashlib
-from urllib.parse import quote
 from moviebox_api import MovieBoxClient, MovieBoxAuth, MovieBoxContent, MovieBoxStream, MovieBoxUser
 
 # Configure logging
@@ -1652,7 +1651,6 @@ async def proxy_download(
 ):
     """Compatibility download using the same verified MP4 relay as the SDK API."""
     from starlette.concurrency import run_in_threadpool
-    from urllib.parse import quote
     from cinekivu_bridge import valid_id, _subject, _remote_error
     from cinekivu_downloads import Options, prepare, filename
     from cinekivu_source import api as cine, delivery
@@ -1669,8 +1667,8 @@ async def proxy_download(
         name = data['file']['filename']
         if title != 'Movie':
             name = filename(title, data['year'] or '', data['season'], data['episode'],
-                            data['file']['quality'] or 'video', 'mp4')
-        response.headers['content-disposition'] = "attachment; filename=\"cinekivu-download.mp4\"; filename*=UTF-8''" + quote(name, safe='')
+                            str(data['file']['qualityValue'] or data['file']['quality'] or ''), 'mp4')
+        response.headers['content-disposition'] = delivery.attachment_disposition(name)
         return response
     except Exception as exc:
         raise _remote_error(exc) from exc

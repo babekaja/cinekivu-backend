@@ -120,7 +120,7 @@ def test_batch_keeps_order_and_partial_failures_with_shared_metadata(setup):
     assert [i['status'] for i in data['items']] == ['ready', 'unavailable', 'ready']
     assert data['readyCount'] == 2 and data['partial']
     assert calls['details'] == ['series'] and calls['seasons'] == ['series']
-    assert 'S01E02' in data['items'][0]['data']['file']['filename']
+    assert data['items'][0]['data']['file']['filename'].endswith(' s1 ep2 720 p.mp4')
     assert '/' not in data['items'][0]['data']['file']['filename']
 
 

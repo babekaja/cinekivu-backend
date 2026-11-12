@@ -1,4 +1,6 @@
 """Resume URLs survive token expiry and process registry loss without losing Range validators."""
+from urllib.parse import unquote
+
 import httpx
 from fastapi.testclient import TestClient
 from cinekivu_source import api as cine, delivery
@@ -34,14 +36,18 @@ def test_stable_link_re_resolves_after_registry_loss_and_preserves_if_range(monk
     # A restarted backend has no old playback or download token registry.
     delivery._playback_sources.clear()
     delivery._download_sources.clear()
-    response = client.get(endpoint, headers={'Range': 'bytes=32-', 'If-Range': '"same-video"'})
+    response = client.get(endpoint, params={'title': 'Les Enfants de l’été'}, headers={'Range': 'bytes=32-', 'If-Range': '"same-video"'})
     assert response.status_code == 206 and response.content == body[32:]
     assert response.headers['etag'] == '"same-video"'
     assert response.headers['last-modified'] == 'Wed, 28 Oct 2026 00:00:00 GMT'
+    disposition = response.headers['content-disposition']
+    assert 'filename="Les Enfants de lete s2 ep3 480 p.mp4"' in disposition
+    assert unquote(disposition.split("filename*=UTF-8''")[1]) == 'Les Enfants de l’été s2 ep3 480 p.mp4'
     assert resolutions == [('123', 2, 3)]
     assert seen[-1].headers['if-range'] == '"same-video"'
     changed = client.get(endpoint, headers={'Range': 'bytes=32-', 'If-Range': '"old-version"'})
     assert changed.status_code == 200 and changed.content == body
+    assert download['id'] in changed.headers['content-disposition']
     assert client.get('/api/download/by-id/not-a-media-id').status_code == 422
 
 
@@ -59,5 +65,7 @@ def test_expired_cdn_signature_is_renewed_on_resume(monkeypatch):
         return httpx.Response(200, stream=httpx.ByteStream(b'full video'), headers={'Content-Type':'video/mp4','Content-Length':'10'})
     original = httpx.AsyncClient
     monkeypatch.setattr(httpx, 'AsyncClient', lambda **kw: original(transport=httpx.MockTransport(cdn), **kw))
-    assert client.get(endpoint).content == b'full video'
+    response = client.get(endpoint, params={'title': 'Un film'})
+    assert response.content == b'full video'
+    assert unquote(response.headers['content-disposition'].split("filename*=UTF-8''")[1]) == 'Un film 720 p.mp4'
     assert seen == ['/old.mp4', '/new.mp4']

@@ -710,8 +710,9 @@ def install_cinekivu_routes(app):
         from cinekivu_source.device_delivery import resolve_download
         response.headers['Cache-Control'] = 'private, no-store'
         return resolve_download(media_id, cine.engine, detail_path)
-    async def resumable_download(media_id: str, request: Request):
-        return await delivery.stable_download_stream(media_id, request, cine.engine)
+    async def resumable_download(media_id: str, request: Request,
+                                 title: str | None = Query(None, max_length=240)):
+        return await delivery.stable_download_stream(media_id, request, cine.engine, title)
     app.add_api_route('/api/download/by-id/{media_id}', resumable_download, methods=['GET'], tags=['Téléchargements CineKivu'])
     app.add_api_route('/api/download/by-id/{media_id}', resumable_download, methods=['HEAD'], include_in_schema=False)
     app.add_api_route('/api/download/{token}/{media_id}', delivery.download_stream,

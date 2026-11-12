@@ -2026,7 +2026,7 @@
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
                   "const result = pm.response.json();",
                   "pm.test(\"SDK — lot partiel et ordre des épisodes / contrat 1\", () => { pm.expect(result.data.items.map(x=>x.episode)).to.eql([2,3,1]); pm.expect(result.data.readyCount).to.eql(2); });",
-                  "pm.test(\"SDK — lot partiel et ordre des épisodes / contrat 2\", () => { pm.expect(result.data.items[1].status).to.eql(\"unavailable\"); pm.expect(result.data.partial).to.eql(true); pm.expect(result.data.items[0].data.file.filename).to.include(\"S01E02\"); });"
+                  "pm.test(\"SDK — lot partiel et ordre des épisodes / contrat 2\", () => { pm.expect(result.data.items[1].status).to.eql(\"unavailable\"); pm.expect(result.data.partial).to.eql(true); pm.expect(result.data.items[0].data.file.filename).to.eql(\"Série Démo s1 ep2 720 p.mp4\"); });"
                 ],
                 "type": "text/javascript"
               }
